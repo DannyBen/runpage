@@ -8,6 +8,10 @@ and shows status, output, errors, and exit results directly inside each block.
 
 Opening a document never executes its code automatically.
 
+---
+![](support/demo.gif)
+---
+
 ## Install
 
 The simplest option is with `eget`:
