@@ -2,11 +2,21 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestPrintError(t *testing.T) {
+	var stderr bytes.Buffer
+	PrintError(errors.New("broken"), &stderr)
+	PrintError(nil, &stderr)
+	if got, want := stderr.String(), "error: broken\n"; got != want {
+		t.Fatalf("stderr = %q, want %q", got, want)
+	}
+}
 
 func TestRootHelp(t *testing.T) {
 	var stdout, stderr bytes.Buffer
@@ -154,6 +164,29 @@ func TestMissingDocument(t *testing.T) {
 	assertContains(t, err.Error(), "no document found")
 	if stdout.Len() != 0 {
 		t.Fatalf("stdout = %q", stdout.String())
+	}
+}
+
+func TestExplicitDocumentErrors(t *testing.T) {
+	dir := t.TempDir()
+	tests := []struct {
+		name string
+		path string
+		want string
+	}{
+		{name: "missing", path: filepath.Join(dir, "missing.md"), want: "document not found"},
+		{name: "directory", path: dir, want: "document is a directory"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			err := Execute([]string{test.path, "--show"}, "1.2.3", &stdout, &stderr)
+			if err == nil {
+				t.Fatal("expected error")
+			}
+			assertContains(t, err.Error(), test.want)
+		})
 	}
 }
 

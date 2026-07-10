@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -55,6 +56,8 @@ func TestReadOnlyReaderDoesNotSelectOrExecuteBlocks(t *testing.T) {
 	for _, key := range []tea.KeyMsg{
 		{Type: tea.KeyTab},
 		{Type: tea.KeyShiftTab},
+		{Type: tea.KeyCtrlDown},
+		{Type: tea.KeyCtrlUp},
 		{Type: tea.KeyEnter},
 	} {
 		updated, command := model.Update(key)
@@ -66,6 +69,56 @@ func TestReadOnlyReaderDoesNotSelectOrExecuteBlocks(t *testing.T) {
 
 	if model.focused != -1 || model.running != -1 || len(model.results) != 0 {
 		t.Fatalf("read-only model changed execution state: %#v", model)
+	}
+}
+
+func TestReaderNavigationResizeAndQuit(t *testing.T) {
+	markdown := []byte("# Guide\n\n```bash\nprintf first\n```\n\n```sh\nprintf second\n```\n")
+	var output bytes.Buffer
+	model := newReaderModel(markdown, &output, 80, 20)
+
+	if model.Init() != nil {
+		t.Fatal("Init returned a command")
+	}
+	updated, _ := model.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	model = updated.(readerModel)
+	if model.focused != 1 {
+		t.Fatalf("backward focus did not wrap: %d", model.focused)
+	}
+
+	updated, _ = model.Update(tea.WindowSizeMsg{Width: 42, Height: 12})
+	model = updated.(readerModel)
+	if model.viewport.Width != 42 || model.viewport.Height != 11 {
+		t.Fatalf("viewport size = %dx%d", model.viewport.Width, model.viewport.Height)
+	}
+
+	updated, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}})
+	model = updated.(readerModel)
+	if model.viewport.YOffset != 0 {
+		t.Fatalf("top offset = %d", model.viewport.YOffset)
+	}
+	_, command := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
+	if command == nil {
+		t.Fatal("quit did not return a command")
+	}
+}
+
+func TestReaderWithoutBlocksIgnoresExecutionControls(t *testing.T) {
+	var output bytes.Buffer
+	model := newReaderModel([]byte("# Guide\n\nNo commands.\n"), &output, 80, 20)
+	model.focus(1)
+	if command := model.startExecution(); command != nil {
+		t.Fatal("reader without blocks returned an execution command")
+	}
+	if strings.Contains(model.View(), "block 1/") {
+		t.Fatalf("block status shown without blocks:\n%s", model.View())
+	}
+}
+
+func TestReaderViewReportsModelError(t *testing.T) {
+	model := readerModel{err: fmt.Errorf("render failed")}
+	if got, want := model.View(), "error: render failed\n"; got != want {
+		t.Fatalf("View = %q, want %q", got, want)
 	}
 }
 

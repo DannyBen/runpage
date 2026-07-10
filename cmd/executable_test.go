@@ -49,3 +49,35 @@ func TestShellAndConsoleBlocksAreExecutable(t *testing.T) {
 		t.Fatalf("commands = %q, %q", blocks[0].command, blocks[1].command)
 	}
 }
+
+func TestFenceParsingEdges(t *testing.T) {
+	markdown := strings.Join([]string{
+		"    ```bash",
+		"ignored",
+		"    ```",
+		"~~~BASH",
+		"printf tilde",
+		"~~~~",
+		"````sh",
+		"printf long",
+		"```",
+		"````",
+		"```bash noop",
+		"ignored",
+		"```",
+		"```",
+		"ignored",
+		"```",
+	}, "\n")
+
+	blocks := executableBlocks(markdown)
+	if len(blocks) != 2 {
+		t.Fatalf("blocks = %#v, want two executable blocks", blocks)
+	}
+	if blocks[0].language != "bash" || blocks[0].command != "printf tilde" {
+		t.Fatalf("blocks[0] = %#v", blocks[0])
+	}
+	if blocks[1].language != "sh" || !strings.Contains(blocks[1].command, "```") {
+		t.Fatalf("blocks[1] = %#v", blocks[1])
+	}
+}

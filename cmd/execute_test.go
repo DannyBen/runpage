@@ -42,3 +42,17 @@ func TestExecuteBlockCancellationStopsProcess(t *testing.T) {
 		t.Fatalf("unexpected stdout: %q", message.result.stdout)
 	}
 }
+
+func TestExecuteBlockReportsMissingInterpreter(t *testing.T) {
+	message := executeBlock(context.Background(), 0, executableBlock{
+		language: "/definitely/not/a/shell",
+		command:  "printf unreachable",
+	}, 80)
+
+	if message.result.exitCode != -1 {
+		t.Fatalf("exitCode = %d, want -1", message.result.exitCode)
+	}
+	if !strings.Contains(message.result.stderr, "no such file or directory") {
+		t.Fatalf("stderr = %q", message.result.stderr)
+	}
+}
