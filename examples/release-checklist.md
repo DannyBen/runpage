@@ -37,7 +37,7 @@ git status --short
 
 ## 6. Publish
 
-This final command is intentionally not executable in Mob.
+This final command is intentionally not executable in Runpage.
 
 ```bash :noop
 git push origin main

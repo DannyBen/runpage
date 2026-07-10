@@ -23,7 +23,7 @@ type loadedDocument struct {
 }
 
 type frontMatter struct {
-	Mob documentConfig `yaml:"mob"`
+	Runpage documentConfig `yaml:"runpage"`
 }
 
 func loadDocument(path string, values documentValues) (loadedDocument, error) {
@@ -54,7 +54,7 @@ func parseFrontMatter(markdown []byte) (documentConfig, []byte, error) {
 		if err := yaml.Unmarshal(bytes.Join(lines[1:index], nil), &matter); err != nil {
 			return documentConfig{}, nil, err
 		}
-		return matter.Mob, bytes.Join(lines[index+1:], nil), nil
+		return matter.Runpage, bytes.Join(lines[index+1:], nil), nil
 	}
 	return documentConfig{}, nil, fmt.Errorf("front matter is missing its closing ---")
 }

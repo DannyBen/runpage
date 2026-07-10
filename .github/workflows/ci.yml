@@ -15,9 +15,9 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            binary: mob-smoke
+            binary: runpage-smoke
           - os: macos-latest
-            binary: mob-smoke
+            binary: runpage-smoke
     env:
       GOCACHE: ${{ github.workspace }}/.cache/go-build
     steps:

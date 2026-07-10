@@ -12,7 +12,7 @@ func TestParseFrontMatter(t *testing.T) {
 	markdown := []byte(strings.Join([]string{
 		"---",
 		"title: Release checklist",
-		"mob:",
+		"runpage:",
 		"  required: [version, channel]",
 		"  dependencies:",
 		"    - git",
@@ -48,8 +48,8 @@ func TestParseFrontMatterLeavesOrdinaryDocumentsAlone(t *testing.T) {
 
 func TestParseFrontMatterErrors(t *testing.T) {
 	for _, markdown := range []string{
-		"---\nmob:\n  required: [version]\n",
-		"---\nmob: [invalid\n---\n# Guide\n",
+		"---\nrunpage:\n  required: [version]\n",
+		"---\nrunpage: [invalid\n---\n# Guide\n",
 	} {
 		if _, _, err := parseFrontMatter([]byte(markdown)); err == nil {
 			t.Fatalf("front matter %q did not return an error", markdown)
@@ -87,7 +87,7 @@ func TestDocumentDependencies(t *testing.T) {
 	if err := requireDependencies(documentConfig{Dependencies: []string{"go"}}); err != nil {
 		t.Fatalf("installed dependency returned error: %v", err)
 	}
-	if err := requireDependencies(documentConfig{Dependencies: []string{"mob-command-that-does-not-exist"}}); err == nil {
+	if err := requireDependencies(documentConfig{Dependencies: []string{"runpage-command-that-does-not-exist"}}); err == nil {
 		t.Fatal("missing dependency was accepted")
 	}
 }
@@ -175,9 +175,9 @@ func TestFrontMatterModeValidation(t *testing.T) {
 	document := filepath.Join(t.TempDir(), "release.md")
 	markdown := strings.Join([]string{
 		"---",
-		"mob:",
+		"runpage:",
 		"  required: [version]",
-		"  dependencies: [mob-command-that-does-not-exist]",
+		"  dependencies: [runpage-command-that-does-not-exist]",
 		"---",
 		"# Release {{ version }}",
 	}, "\n")
@@ -196,7 +196,7 @@ func TestFrontMatterModeValidation(t *testing.T) {
 		if err != nil {
 			t.Fatalf("show returned error: %v", err)
 		}
-		if strings.Contains(stdout.String(), "mob:") || !strings.Contains(stdout.String(), "Release 1.0.0") {
+		if strings.Contains(stdout.String(), "runpage:") || !strings.Contains(stdout.String(), "Release 1.0.0") {
 			t.Fatalf("show output = %q", stdout.String())
 		}
 	})

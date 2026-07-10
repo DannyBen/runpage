@@ -42,8 +42,8 @@ func NewRootCommand(version string, stdout, stderr io.Writer) *cobra.Command {
 	var opts options
 
 	root := &cobra.Command{
-		Use:           "mob [FILE] [options]",
-		Short:         "Markdown Ops Book",
+		Use:           "runpage [FILE] [options]",
+		Short:         "Interactive command pages for the terminal",
 		Version:       version,
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -146,13 +146,13 @@ func resolveDocument(args []string) (string, error) {
 		return args[0], nil
 	}
 
-	for _, candidate := range []string{"mob.md", "README.md"} {
+	for _, candidate := range []string{"runpage.md", "README.md"} {
 		if err := requireFile(candidate); err == nil {
 			return candidate, nil
 		}
 	}
 
-	return "", fmt.Errorf("no document found (expected mob.md or README.md)")
+	return "", fmt.Errorf("no document found (expected runpage.md or README.md)")
 }
 
 func requireFile(path string) error {

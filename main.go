@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/dannyben/mob/cmd"
+	"github.com/dannyben/runpage/cmd"
 )
 
 var Version = "0.0.0-dev"

@@ -3,10 +3,10 @@ set -euo pipefail
 
 root=$(git rev-parse --show-toplevel)
 version=$(git describe --tags --always --dirty 2>/dev/null || echo dev)
-build_root=/tmp/mob-build
+build_root=/tmp/runpage-build
 build_src=$build_root/src
-build_bin=$build_root/mob
-install_path=/usr/local/bin/mob
+build_bin=$build_root/runpage
+install_path=/usr/local/bin/runpage
 
 rm -rf "$build_src"
 mkdir -p "$build_src"

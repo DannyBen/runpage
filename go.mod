@@ -1,4 +1,4 @@
-module github.com/dannyben/mob
+module github.com/dannyben/runpage
 
 go 1.25.7
 

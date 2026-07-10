@@ -29,8 +29,8 @@ func TestRootHelp(t *testing.T) {
 	if stderr.Len() != 0 {
 		t.Fatalf("stderr = %q", stderr.String())
 	}
-	assertContains(t, stdout.String(), "Markdown Ops Book")
-	assertContains(t, stdout.String(), "mob [FILE] [options] [KEY:VALUE...]")
+	assertContains(t, stdout.String(), "Runpage - Interactive command pages for the terminal")
+	assertContains(t, stdout.String(), "runpage [FILE] [options] [KEY:VALUE...]")
 	assertContains(t, stdout.String(), "--show, -s")
 	assertContains(t, stdout.String(), "--read, -r")
 	assertContains(t, stdout.String(), "--compact, -c")
@@ -140,15 +140,15 @@ func TestDefaultDocumentPreference(t *testing.T) {
 		t.Fatalf("document = %q, want README.md", document)
 	}
 
-	if err := os.WriteFile("mob.md", []byte("# Mob\n"), 0o644); err != nil {
+	if err := os.WriteFile("runpage.md", []byte("# Runpage\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	document, err = resolveDocument(nil)
 	if err != nil {
 		t.Fatalf("resolveDocument returned error: %v", err)
 	}
-	if document != "mob.md" {
-		t.Fatalf("document = %q, want mob.md", document)
+	if document != "runpage.md" {
+		t.Fatalf("document = %q, want runpage.md", document)
 	}
 }
 

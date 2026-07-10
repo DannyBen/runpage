@@ -1,14 +1,14 @@
 version: 2
 
-project_name: mob
+project_name: runpage
 
 before:
   hooks:
     - go mod tidy
 
 builds:
-  - id: mob
-    binary: mob
+  - id: runpage
+    binary: runpage
     main: .
     env:
       - CGO_ENABLED=0
@@ -26,7 +26,7 @@ builds:
 archives:
   - id: default
     ids:
-      - mob
+      - runpage
     name_template: >-
       {{ .ProjectName }}-{{ .Version }}-{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
     files:
@@ -35,13 +35,13 @@ archives:
 nfpms:
   - id: linux-packages
     ids:
-      - mob
-    package_name: mob
+      - runpage
+    package_name: runpage
     file_name_template: "{{ .ConventionalFileName }}"
     vendor: DannyBen
-    homepage: https://github.com/DannyBen/mob
+    homepage: https://github.com/DannyBen/runpage
     maintainer: Danny Ben Shitrit <db@dannyben.com>
-    description: Markdown Ops Book.
+    description: Interactive command pages for the terminal.
     license: MIT
     formats:
       - apk

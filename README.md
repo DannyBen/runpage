@@ -1,8 +1,8 @@
-# Mob - Markdown Ops Book
+# Runpage - Interactive Command Pages
 
-![repocard](https://repocard.dannyben.com/svg/mob.svg)
+![repocard](https://repocard.dannyben.com/svg/runpage.svg)
 
-`mob` turns Markdown documents into interactive terminal runbooks. It keeps the
+`runpage` turns Markdown documents into interactive command pages. It keeps the
 document in one continuous view, lets you move between executable code blocks,
 and shows status, output, errors, and exit results directly inside each block.
 
@@ -13,7 +13,7 @@ Opening a document never executes its code automatically.
 The simplest option is with `eget`:
 
 ```bash
-eget dannyben/mob
+eget dannyben/runpage
 ```
 
 Additional installation methods, including Go and GitHub Release archives,
@@ -35,19 +35,19 @@ are in [INSTALL.md](INSTALL.md).
 Open a document in the interactive reader:
 
 ```bash
-mob path/to/runbook.md
+runpage path/to/page.md
 ```
 
-When no file is provided, Mob looks for `mob.md` and then `README.md` in the
+When no file is provided, Runpage looks for `runpage.md` and then `README.md` in the
 current directory.
 
 Choose a focused mode when needed:
 
 ```bash
-mob runbook.md --read
-mob runbook.md --compact
-mob runbook.md --show
-mob runbook.md --workdir path/to/project
+runpage release.md --read
+runpage release.md --compact
+runpage release.md --show
+runpage release.md --workdir path/to/project
 ```
 
 | Mode | Purpose |
@@ -58,13 +58,13 @@ mob runbook.md --workdir path/to/project
 | `--show`, `-s` | Render the complete document and exit |
 
 Use `--workdir DIR` (`-w DIR`) to run every executable block from a specific
-directory. Without it, commands run from the directory where Mob was started.
+directory. Without it, commands run from the directory where Runpage was started.
 Use the reserved `self` path root to resolve a workdir from the directory
 containing the Markdown document:
 
 ```bash
-mob path/to/runbook.md --workdir self
-mob path/to/runbook.md --workdir self/tasks
+runpage path/to/page.md --workdir self
+runpage path/to/page.md --workdir self/tasks
 ```
 
 `self` selects the document directory, while `self/tasks` selects its `tasks`
@@ -82,7 +82,7 @@ test "$(git branch --show-current)" = master
 ```
 ````
 
-Multiple plain words form one label. Tokens beginning with `:` are Mob
+Multiple plain words form one label. Tokens beginning with `:` are Runpage
 directives and are not included in the title, so labels compose with `:noop`:
 
 ````markdown
@@ -98,11 +98,11 @@ branch while omitting unrelated headings and prose.
 
 ## Document Values
 
-Pass `KEY:VALUE` arguments after the document to inject values before Mob
+Pass `KEY:VALUE` arguments after the document to inject values before Runpage
 renders or executes it:
 
 ```bash
-mob release.md version:1.0.0
+runpage release.md version:1.0.0
 ```
 
 Both `$KEY` and `{{ KEY }}` placeholders are replaced throughout the document,
@@ -114,17 +114,17 @@ including executable blocks:
 Deploying version {{ version }}.
 ```
 
-Repeat the argument to provide more values. Mob splits each argument at its
+Repeat the argument to provide more values. Runpage splits each argument at its
 first colon, so values may contain additional colons. Values are inserted
 literally in a single pass and are not escaped for the surrounding code.
 
 ## Document Configuration
 
-A document can declare Mob configuration in YAML front matter:
+A document can declare Runpage configuration in YAML front matter:
 
 ```yaml
 ---
-mob:
+runpage:
   required: [version]
   dependencies: [git, curl]
   workdir: self
@@ -140,7 +140,7 @@ opening the document. `--read` bypasses value and dependency requirements so
 the unexpanded document can still be inspected safely. Dependency checks apply
 only to execution-enabled modes. A CLI `--workdir` value overrides front matter.
 In either location, `self` and `self/...` resolve from the directory containing
-the document; other relative paths resolve from the directory where Mob was
+the document; other relative paths resolve from the directory where Runpage was
 started.
 
 Front matter is configuration only and is not included in rendered output.
@@ -163,14 +163,14 @@ The [examples](examples/) folder contains documents for static rendering,
 interactive execution, compact mode, and execution results.
 
 ```bash
-mob examples/showcase.md
-mob examples/execution-demo.md --compact
-mob examples/release-checklist.md --read
+runpage examples/showcase.md
+runpage examples/execution-demo.md --compact
+runpage examples/release-checklist.md --read
 ```
 
 ## Development
 
 ```bash
 op check
-op mob --help
+op runpage --help
 ```

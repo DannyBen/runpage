@@ -1,6 +1,6 @@
-# Build and verify Mob
+# Build and verify Runpage
 
-Mob keeps prose and commands together in one continuous terminal document.
+Runpage keeps prose and commands together in one continuous terminal document.
 The presentation is intentionally quiet so the instructions remain the focus.
 
 > Opening a document never executes its code automatically.
