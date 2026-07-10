@@ -35,6 +35,9 @@ Options:
     directory where Runpage was started. Use self or self/... for paths
     relative to the document's directory.
 
+  --syntax
+    Show a concise reference for authoring Runpage documents.
+
   --help, -h
     Show this help.
 

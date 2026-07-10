@@ -1,0 +1,65 @@
+Runpage document syntax
+
+A Runpage document is ordinary Markdown with executable fenced code blocks.
+
+Minimal page:
+
+  # Project checks
+
+  ```bash
+  go test ./...
+  ```
+
+Fence syntax:
+
+  ```LANG [LABEL...] [:noop]
+  command
+  ```
+
+Executable languages are bash, sh, shell, zsh, console, python, py, ruby, and
+rb. Other fenced languages are displayed but not executed. LABEL is optional.
+Add :noop to make an otherwise executable block display-only:
+
+  ```bash example :noop
+  echo "shown, not run"
+  ```
+
+Document values:
+
+  runpage release.md version:1.2.3
+
+Use $KEY or {{ KEY }} anywhere in the document:
+
+  # Release {{ version }}
+
+  ```bash
+  git tag "v$version"
+  ```
+
+Values are inserted literally. Each KEY:VALUE argument is split at its first
+colon, so a value may contain additional colons.
+
+Optional configuration must be YAML front matter at the start of the document,
+under the runpage key:
+
+  ---
+  runpage:
+    required: [version]
+    dependencies: [git, curl]
+    workdir: self
+  ---
+
+required lists non-empty values that callers must provide. dependencies lists
+commands that must exist. workdir sets the directory for every executable block.
+self means the document's directory; self/subdir resolves from that directory.
+Other relative workdirs resolve from the directory where Runpage was started.
+
+Useful commands:
+
+  runpage page.md                 Open the interactive reader
+  runpage page.md --compact       Show headings and executable blocks only
+  runpage page.md --read          Disable selection and execution
+  runpage page.md --show          Render to standard output and exit
+  runpage page.md --workdir DIR   Override the configured workdir
+
+In the interactive reader, press ? for key binding help.

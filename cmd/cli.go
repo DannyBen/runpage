@@ -18,6 +18,7 @@ type options struct {
 	show    bool
 	read    bool
 	compact bool
+	syntax  bool
 	workdir string
 }
 
@@ -49,6 +50,12 @@ func NewRootCommand(version string, stdout, stderr io.Writer) *cobra.Command {
 		SilenceErrors: true,
 		Args:          cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if opts.syntax {
+				if len(args) > 0 {
+					return fmt.Errorf("--syntax does not accept arguments")
+				}
+				return printHelpFile(cmd, "help/syntax.txt")
+			}
 			documentArgs := args
 			valueArgs := []string(nil)
 			if len(args) > 0 {
@@ -102,8 +109,9 @@ func NewRootCommand(version string, stdout, stderr io.Writer) *cobra.Command {
 	root.Flags().BoolVarP(&opts.show, "show", "s", false, "render the document and exit")
 	root.Flags().BoolVarP(&opts.read, "read", "r", false, "open the interactive reader without execution")
 	root.Flags().BoolVarP(&opts.compact, "compact", "c", false, "show only executable blocks in the interactive reader")
+	root.Flags().BoolVar(&opts.syntax, "syntax", false, "show the Runpage document syntax")
 	root.Flags().StringVarP(&opts.workdir, "workdir", "w", "", "directory used to execute code blocks")
-	root.MarkFlagsMutuallyExclusive("show", "read", "compact")
+	root.MarkFlagsMutuallyExclusive("show", "read", "compact", "syntax")
 
 	return root
 }
@@ -130,12 +138,18 @@ func resolveWorkdir(path string) (string, error) {
 }
 
 func rootHelp(cmd *cobra.Command, _ []string) {
-	content, err := helpFiles.ReadFile("help/root.txt")
-	if err != nil {
+	if err := printHelpFile(cmd, "help/root.txt"); err != nil {
 		fmt.Fprintln(cmd.ErrOrStderr(), err)
-		return
+	}
+}
+
+func printHelpFile(cmd *cobra.Command, path string) error {
+	content, err := helpFiles.ReadFile(path)
+	if err != nil {
+		return err
 	}
 	fmt.Fprint(cmd.OutOrStdout(), string(content))
+	return nil
 }
 
 func resolveDocument(args []string) (string, error) {

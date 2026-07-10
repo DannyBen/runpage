@@ -35,7 +35,39 @@ func TestRootHelp(t *testing.T) {
 	assertContains(t, stdout.String(), "--read, -r")
 	assertContains(t, stdout.String(), "--compact, -c")
 	assertContains(t, stdout.String(), "--workdir DIR, -w DIR")
+	assertContains(t, stdout.String(), "--syntax")
 	assertContains(t, stdout.String(), "YAML front matter")
+}
+
+func TestSyntaxHelp(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+
+	err := Execute([]string{"--syntax"}, "1.2.3", &stdout, &stderr)
+
+	if err != nil {
+		t.Fatalf("Execute returned error: %v", err)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q", stderr.String())
+	}
+	for _, want := range []string{
+		"Runpage document syntax",
+		"```LANG [LABEL...] [:noop]",
+		"$KEY or {{ KEY }}",
+		"under the runpage key",
+		"workdir: self",
+		"press ? for key binding help",
+	} {
+		assertContains(t, stdout.String(), want)
+	}
+}
+
+func TestSyntaxHelpRejectsArguments(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	err := Execute([]string{"--syntax", "page.md"}, "1.2.3", &stdout, &stderr)
+	if err == nil || !strings.Contains(err.Error(), "does not accept arguments") {
+		t.Fatalf("error = %v", err)
+	}
 }
 
 func TestVersion(t *testing.T) {
