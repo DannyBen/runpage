@@ -27,8 +27,8 @@ Options:
     selected or executed.
 
   --compact, -c
-    Open an execution-focused interactive reader showing only executable code
-    blocks with their captions.
+    Open an execution-focused interactive reader showing relevant headings and
+    executable code blocks.
 
   --workdir DIR, -w DIR
     Run executable code blocks from DIR. Relative paths are resolved from the

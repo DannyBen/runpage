@@ -28,6 +28,13 @@ type renderedDocument struct {
 	blockLines []int
 }
 
+type headingContext struct {
+	id     int
+	level  int
+	text   string
+	prefix string
+}
+
 type terminalRenderer struct {
 	source     []byte
 	width      int
@@ -39,7 +46,9 @@ type terminalRenderer struct {
 	lines      []string
 	blockLines []int
 	executable int
-	heading    string
+	headings   [6]headingContext
+	emitted    [6]headingContext
+	headingID  int
 	compact    bool
 }
 
@@ -64,13 +73,16 @@ func renderReaderMarkdown(source []byte, width int, color bool, focused, running
 func (r *terminalRenderer) renderBlock(node ast.Node, prefix string) {
 	switch current := node.(type) {
 	case *ast.Heading:
-		r.heading = cleanText(r.inlineText(current))
+		r.headingID++
+		heading := headingContext{id: r.headingID, level: current.Level, text: cleanText(r.inlineText(current)), prefix: prefix}
+		r.headings[current.Level-1] = heading
+		for level := current.Level; level < len(r.headings); level++ {
+			r.headings[level] = headingContext{}
+		}
 		if r.compact {
 			return
 		}
-		r.blank()
-		r.lines = append(r.lines, prefix+r.paint(r.heading, ansiBold))
-		r.blank()
+		r.renderHeading(heading)
 	case *ast.Paragraph, *ast.TextBlock:
 		if r.compact {
 			return
@@ -120,14 +132,17 @@ func (r *terminalRenderer) renderFence(node *ast.FencedCodeBlock, prefix string)
 	if node.Info != nil {
 		info = string(node.Info.Text(r.source))
 	}
-	language, executable := executableLanguage(info)
+	language, label, executable := fenceMetadata(info)
 	code := strings.TrimSuffix(string(node.Lines().Value(r.source)), "\n")
 	if !executable {
 		if r.compact {
 			return
 		}
-		r.renderCodeFrame(-1, prefix, r.heading, language, code, "display only", "", executionResult{})
+		r.renderCodeFrame(-1, prefix, label, language, code, "display only", "", executionResult{})
 		return
+	}
+	if r.compact {
+		r.renderCompactHeadings()
 	}
 
 	index := r.executable
@@ -152,7 +167,42 @@ func (r *terminalRenderer) renderFence(node *ast.FencedCodeBlock, prefix string)
 			status = "executable"
 		}
 	}
-	r.renderCodeFrame(index, prefix, r.heading, language, code, status, style, result)
+	r.renderCodeFrame(index, prefix, label, language, code, status, style, result)
+}
+
+func (r *terminalRenderer) renderHeading(heading headingContext) {
+	r.blank()
+	switch heading.level {
+	case 1:
+		r.lines = append(r.lines, heading.prefix+r.paint(heading.text, ansiBold))
+		r.lines = append(r.lines, heading.prefix+strings.Repeat("═", max(3, r.width-width(heading.prefix))))
+	case 2:
+		r.lines = append(r.lines, heading.prefix+r.paint(heading.text, ansiBold))
+		r.lines = append(r.lines, heading.prefix+strings.Repeat("─", max(3, r.width-width(heading.prefix))))
+	default:
+		caption := strings.Repeat("#", heading.level) + " " + heading.text
+		r.lines = append(r.lines, heading.prefix+r.paint(caption, ansiBold))
+	}
+	r.blank()
+}
+
+func (r *terminalRenderer) renderCompactHeadings() {
+	firstChanged := -1
+	for level := range r.headings {
+		if r.headings[level].id != r.emitted[level].id {
+			firstChanged = level
+			break
+		}
+	}
+	if firstChanged < 0 {
+		return
+	}
+	for level := firstChanged; level < len(r.headings); level++ {
+		if r.headings[level].id != 0 {
+			r.renderHeading(r.headings[level])
+		}
+	}
+	r.emitted = r.headings
 }
 
 func (r *terminalRenderer) renderPlainCode(code, prefix string) {

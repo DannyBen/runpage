@@ -54,7 +54,7 @@ mob runbook.md --workdir path/to/project
 | --- | --- |
 | default | Read the full document and execute selected blocks |
 | `--read`, `-r` | Read the full document without execution |
-| `--compact`, `-c` | Show only captioned executable blocks |
+| `--compact`, `-c` | Show relevant headings and executable blocks |
 | `--show`, `-s` | Render the complete document and exit |
 
 Use `--workdir DIR` (`-w DIR`) to run every executable block from a specific
@@ -72,6 +72,29 @@ subdirectory and `self/..` selects its parent. Use `./self` to refer to a real
 launch-relative directory named `self`.
 
 Add `:noop` to a fence info string to keep that block display-only.
+
+Code frames are untitled by default. Add a short label after the fence language
+when a frame needs its own title:
+
+````markdown
+```bash check
+test "$(git branch --show-current)" = master
+```
+````
+
+Multiple plain words form one label. Tokens beginning with `:` are Mob
+directives and are not included in the title, so labels compose with `:noop`:
+
+````markdown
+```bash example :noop
+echo "display only"
+```
+````
+
+Markdown headings remain document captions outside the code frame. H1 uses a
+double ruler, H2 uses a single ruler, and H3 through H6 retain their Markdown
+`###` through `######` prefixes. Compact mode preserves the relevant heading
+branch while omitting unrelated headings and prose.
 
 ## Document Values
 

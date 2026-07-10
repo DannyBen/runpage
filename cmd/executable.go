@@ -26,7 +26,7 @@ func executableBlocks(markdown string) []executableBlock {
 		if !ok {
 			continue
 		}
-		language, executable := executableLanguage(info)
+		language, _, executable := fenceMetadata(info)
 		start := index
 		for index++; index < len(lines); index++ {
 			if closingFence(lines[index], marker) {
@@ -77,21 +77,29 @@ func closingFence(line, marker string) bool {
 	return len(trimmed) >= len(marker)
 }
 
-func executableLanguage(info string) (string, bool) {
+func fenceMetadata(info string) (language, label string, executable bool) {
 	fields := strings.Fields(info)
 	if len(fields) == 0 {
-		return "", false
+		return "", "", false
 	}
-	language := strings.ToLower(fields[0])
+	language = strings.ToLower(fields[0])
+	noop := false
+	labels := make([]string, 0, len(fields)-1)
 	for _, field := range fields[1:] {
 		if field == ":noop" || field == "noop" {
-			return language, false
+			noop = true
+			continue
 		}
+		if strings.HasPrefix(field, ":") {
+			continue
+		}
+		labels = append(labels, field)
 	}
+	label = strings.Join(labels, " ")
 	switch language {
 	case "bash", "sh", "shell", "zsh", "console", "python", "py", "ruby", "rb":
-		return language, true
+		return language, label, !noop
 	default:
-		return language, false
+		return language, label, false
 	}
 }

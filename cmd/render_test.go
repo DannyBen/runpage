@@ -97,6 +97,36 @@ func TestRenderMarkdownDocumentStructures(t *testing.T) {
 	}
 }
 
+func TestRenderMarkdownHeadingHierarchy(t *testing.T) {
+	markdown := []byte(strings.Join([]string{
+		"# Document",
+		"",
+		"## Section",
+		"",
+		"### Topic",
+		"",
+		"#### Detail",
+		"",
+		"##### Note",
+		"",
+		"###### Fine print",
+	}, "\n"))
+	rendered := renderMarkdown(markdown, 30, false, -1, -1, nil).text
+
+	for _, want := range []string{
+		"Document\n" + strings.Repeat("═", 30),
+		"Section\n" + strings.Repeat("─", 30),
+		"### Topic",
+		"#### Detail",
+		"##### Note",
+		"###### Fine print",
+	} {
+		if !strings.Contains(rendered, want) {
+			t.Errorf("heading hierarchy missing %q:\n%s", want, rendered)
+		}
+	}
+}
+
 func TestRenderMarkdownIndentedCodeBlock(t *testing.T) {
 	rendered := renderMarkdown([]byte("    first line\n    second line\n"), 40, false, -1, -1, nil).text
 	if !strings.Contains(rendered, "first line\nsecond line") {
@@ -144,6 +174,78 @@ func TestRenderMarkdownCompactShowsOnlyCaptionedExecutableBlocks(t *testing.T) {
 	}
 	if len(rendered.blockLines) != 2 {
 		t.Fatalf("blockLines = %#v, want two executable blocks", rendered.blockLines)
+	}
+}
+
+func TestRenderMarkdownCompactPreservesHeadingBranchOnce(t *testing.T) {
+	markdown := []byte(strings.Join([]string{
+		"# Runbook",
+		"",
+		"## Verify",
+		"",
+		"### Local",
+		"",
+		"```bash check",
+		"op check",
+		"```",
+		"",
+		"```bash check",
+		"op test",
+		"```",
+		"",
+		"## Notes",
+		"",
+		"Nothing executable here.",
+		"",
+		"## Publish",
+		"",
+		"```bash perform",
+		"op release",
+		"```",
+	}, "\n"))
+	rendered := renderMarkdownMode(markdown, 50, false, 0, -1, nil, true).text
+
+	for _, heading := range []string{"Runbook", "Verify", "### Local", "Publish"} {
+		if strings.Count(rendered, heading) != 1 {
+			t.Errorf("heading %q was not rendered exactly once:\n%s", heading, rendered)
+		}
+	}
+	if strings.Contains(rendered, "Notes") || strings.Contains(rendered, "Nothing executable") {
+		t.Fatalf("unrelated compact branch was rendered:\n%s", rendered)
+	}
+	if strings.Count(rendered, "┌─ check ") != 2 || !strings.Contains(rendered, "┌─ perform ") {
+		t.Fatalf("fence labels missing:\n%s", rendered)
+	}
+}
+
+func TestRenderMarkdownFenceLabelAndCompactHeading(t *testing.T) {
+	markdown := []byte("# Long descriptive heading\n\n```bash check\nop check\n```\n")
+	rendered := renderMarkdownMode(markdown, 80, false, 0, -1, nil, true)
+
+	if !strings.Contains(rendered.text, "┌─ check ") {
+		t.Fatalf("custom fence label missing:\n%s", rendered.text)
+	}
+	if !strings.Contains(rendered.text, "Long descriptive heading") {
+		t.Fatalf("compact heading missing:\n%s", rendered.text)
+	}
+}
+
+func TestRenderMarkdownDoesNotInferFenceLabel(t *testing.T) {
+	markdown := []byte("## Descriptive heading\n\n```bash\nop check\n```\n")
+	rendered := renderMarkdown(markdown, 80, false, 0, -1, nil)
+	if strings.Contains(rendered.text, "┌─ Descriptive heading ") {
+		t.Fatalf("heading was reused as a fence label:\n%s", rendered.text)
+	}
+	if !strings.Contains(rendered.text, "Descriptive heading\n"+strings.Repeat("─", 80)) {
+		t.Fatalf("heading caption missing:\n%s", rendered.text)
+	}
+}
+
+func TestRenderMarkdownDisplayOnlyFenceLabel(t *testing.T) {
+	markdown := []byte("# Guide\n\n```bash example :noop\necho example\n```\n")
+	rendered := renderMarkdown(markdown, 80, false, -1, -1, nil)
+	if !strings.Contains(rendered.text, "┌─ example ") || !strings.Contains(rendered.text, "display only") {
+		t.Fatalf("display-only label missing:\n%s", rendered.text)
 	}
 }
 
