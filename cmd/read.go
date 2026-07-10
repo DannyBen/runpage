@@ -22,10 +22,11 @@ type readerModel struct {
 	viewport   viewport.Model
 	blockLines []int
 	readOnly   bool
+	compact    bool
 	err        error
 }
 
-func readDocument(path string, input io.Reader, output io.Writer, readOnly bool) error {
+func readDocument(path string, input io.Reader, output io.Writer, readOnly, compact bool) error {
 	if !terminalOutput(output) {
 		return fmt.Errorf("interactive reader requires a terminal (use --show for redirected output)")
 	}
@@ -34,7 +35,7 @@ func readDocument(path string, input io.Reader, output io.Writer, readOnly bool)
 		return fmt.Errorf("read document %s: %w", path, err)
 	}
 
-	model := newReaderModelWithMode(markdown, output, renderWidth(output), 24, readOnly)
+	model := newReaderModelWithMode(markdown, output, renderWidth(output), 24, readOnly, compact)
 	program := tea.NewProgram(model, tea.WithInput(input), tea.WithOutput(output), tea.WithAltScreen())
 	final, err := program.Run()
 	if err != nil {
@@ -47,10 +48,10 @@ func readDocument(path string, input io.Reader, output io.Writer, readOnly bool)
 }
 
 func newReaderModel(markdown []byte, output io.Writer, width, height int) readerModel {
-	return newReaderModelWithMode(markdown, output, width, height, false)
+	return newReaderModelWithMode(markdown, output, width, height, false, false)
 }
 
-func newReaderModelWithMode(markdown []byte, output io.Writer, width, height int, readOnly bool) readerModel {
+func newReaderModelWithMode(markdown []byte, output io.Writer, width, height int, readOnly, compact bool) readerModel {
 	focused := 0
 	if readOnly {
 		focused = -1
@@ -62,6 +63,7 @@ func newReaderModelWithMode(markdown []byte, output io.Writer, width, height int
 		running:  -1,
 		focused:  focused,
 		readOnly: readOnly,
+		compact:  compact,
 		output:   output,
 		viewport: viewport.New(width, max(1, height-1)),
 	}
@@ -134,6 +136,9 @@ func (model readerModel) View() string {
 	if len(model.blocks) > 0 {
 		status = fmt.Sprintf("block %d/%d  •  %s", model.focused+1, len(model.blocks), status)
 	}
+	if model.compact {
+		status = "compact  •  " + status
+	}
 	return model.viewport.View() + "\n" + status
 }
 
@@ -160,7 +165,7 @@ func (model *readerModel) startExecution() tea.Cmd {
 }
 
 func (model *readerModel) render(scrollToFocus bool) {
-	rendered := renderMarkdown(model.markdown, model.viewport.Width, colorOutput(model.output), model.focused, model.running, model.results)
+	rendered := renderMarkdownMode(model.markdown, model.viewport.Width, colorOutput(model.output), model.focused, model.running, model.results, model.compact)
 	model.err = nil
 	model.viewport.SetContent(rendered.text)
 	model.blockLines = rendered.blockLines

@@ -41,7 +41,7 @@ func TestReaderMovesBetweenExecutableBlocks(t *testing.T) {
 func TestReadOnlyReaderDoesNotSelectOrExecuteBlocks(t *testing.T) {
 	markdown := []byte("# Guide\n\n```bash\nprintf should-not-run\n```\n")
 	var output bytes.Buffer
-	model := newReaderModelWithMode(markdown, &output, 80, 20, true)
+	model := newReaderModelWithMode(markdown, &output, 80, 20, true, false)
 
 	if model.focused != -1 {
 		t.Fatalf("focused = %d, want -1", model.focused)

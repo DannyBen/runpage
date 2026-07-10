@@ -39,12 +39,17 @@ type terminalRenderer struct {
 	blockLines []int
 	executable int
 	heading    string
+	compact    bool
 }
 
 func renderMarkdown(source []byte, width int, color bool, focused, running int, results map[int]executionResult) renderedDocument {
+	return renderMarkdownMode(source, width, color, focused, running, results, false)
+}
+
+func renderMarkdownMode(source []byte, width int, color bool, focused, running int, results map[int]executionResult, compact bool) renderedDocument {
 	markdown := goldmark.New(goldmark.WithExtensions(extension.GFM))
 	document := markdown.Parser().Parse(textm.NewReader(source))
-	renderer := &terminalRenderer{source: source, width: max(20, width), color: color, focused: focused, running: running, results: results}
+	renderer := &terminalRenderer{source: source, width: max(20, width), color: color, focused: focused, running: running, results: results, compact: compact}
 	for node := document.FirstChild(); node != nil; node = node.NextSibling() {
 		renderer.renderBlock(node, "")
 	}
@@ -54,27 +59,45 @@ func renderMarkdown(source []byte, width int, color bool, focused, running int, 
 func (r *terminalRenderer) renderBlock(node ast.Node, prefix string) {
 	switch current := node.(type) {
 	case *ast.Heading:
-		r.blank()
 		r.heading = cleanText(r.inlineText(current))
+		if r.compact {
+			return
+		}
+		r.blank()
 		r.lines = append(r.lines, prefix+r.paint(r.heading, ansiBold))
 		r.blank()
 	case *ast.Paragraph, *ast.TextBlock:
+		if r.compact {
+			return
+		}
 		r.lines = append(r.lines, wrapText(cleanText(r.inlineText(node)), r.width-width(prefix), prefix)...)
 		r.blank()
 	case *ast.FencedCodeBlock:
 		r.renderFence(current, prefix)
 	case *ast.CodeBlock:
+		if r.compact {
+			return
+		}
 		r.renderPlainCode(string(current.Lines().Value(r.source)), prefix)
 	case *ast.Blockquote:
 		for child := current.FirstChild(); child != nil; child = child.NextSibling() {
 			r.renderBlock(child, prefix+"▌ ")
 		}
 	case *ast.List:
+		if r.compact {
+			return
+		}
 		r.renderList(current, prefix)
 	case *ast.ThematicBreak:
+		if r.compact {
+			return
+		}
 		r.lines = append(r.lines, strings.Repeat("─", max(3, r.width)))
 		r.blank()
 	default:
+		if r.compact {
+			return
+		}
 		if node.Kind().String() == "Table" {
 			r.renderTable(node, prefix)
 			return
@@ -95,6 +118,9 @@ func (r *terminalRenderer) renderFence(node *ast.FencedCodeBlock, prefix string)
 	language, executable := executableLanguage(info)
 	code := strings.TrimSuffix(string(node.Lines().Value(r.source)), "\n")
 	if !executable {
+		if r.compact {
+			return
+		}
 		r.renderCodeFrame(-1, prefix, r.heading, language, code, "display only", "", executionResult{})
 		return
 	}

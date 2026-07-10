@@ -68,11 +68,13 @@ for a read-only interactive view.
 ```bash
 mob README.md
 mob README.md --show
-mob README.md --list
+mob README.md --read
+mob README.md --compact
 ```
 
-`--show` renders the complete document and exits. `--list` is reserved for the
-execution index and is not implemented yet.
+`--show` renders the complete document and exits. `--read` opens the full
+document without execution. `--compact` opens an execution-focused interactive
+view containing only executable blocks with their captions.
 
 ## Development
 

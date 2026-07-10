@@ -33,7 +33,7 @@ func TestRootHelp(t *testing.T) {
 	assertContains(t, stdout.String(), "mob [FILE] [options]")
 	assertContains(t, stdout.String(), "--show, -s")
 	assertContains(t, stdout.String(), "--read, -r")
-	assertContains(t, stdout.String(), "--list, -l")
+	assertContains(t, stdout.String(), "--compact, -c")
 }
 
 func TestVersion(t *testing.T) {
@@ -52,36 +52,19 @@ func TestVersion(t *testing.T) {
 	}
 }
 
-func TestModes(t *testing.T) {
+func TestCompactRequiresTerminal(t *testing.T) {
 	dir := t.TempDir()
 	document := filepath.Join(dir, "guide.md")
 	if err := os.WriteFile(document, []byte("# Guide\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	tests := []struct {
-		name string
-		args []string
-		want string
-	}{
-		{name: "list", args: []string{document, "--list"}, want: "list " + document + " (not implemented)\n"},
+	var stdout, stderr bytes.Buffer
+	err := Execute([]string{document, "--compact"}, "1.2.3", &stdout, &stderr)
+	if err == nil {
+		t.Fatal("expected error")
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var stdout, stderr bytes.Buffer
-			err := Execute(tt.args, "1.2.3", &stdout, &stderr)
-			if err != nil {
-				t.Fatalf("Execute returned error: %v", err)
-			}
-			if got := stdout.String(); got != tt.want {
-				t.Fatalf("stdout = %q, want %q", got, tt.want)
-			}
-			if stderr.Len() != 0 {
-				t.Fatalf("stderr = %q", stderr.String())
-			}
-		})
-	}
+	assertContains(t, err.Error(), "interactive reader requires a terminal")
 }
 
 func TestReadRequiresTerminal(t *testing.T) {
@@ -131,24 +114,23 @@ func TestDefaultDocumentPreference(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var stdout, stderr bytes.Buffer
-	if err := Execute([]string{"--list"}, "1.2.3", &stdout, &stderr); err != nil {
-		t.Fatalf("Execute returned error: %v", err)
+	document, err := resolveDocument(nil)
+	if err != nil {
+		t.Fatalf("resolveDocument returned error: %v", err)
 	}
-	if got, want := stdout.String(), "list README.md (not implemented)\n"; got != want {
-		t.Fatalf("stdout = %q, want %q", got, want)
+	if document != "README.md" {
+		t.Fatalf("document = %q, want README.md", document)
 	}
 
 	if err := os.WriteFile("mob.md", []byte("# Mob\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	stdout.Reset()
-	stderr.Reset()
-	if err := Execute([]string{"--list"}, "1.2.3", &stdout, &stderr); err != nil {
-		t.Fatalf("Execute returned error: %v", err)
+	document, err = resolveDocument(nil)
+	if err != nil {
+		t.Fatalf("resolveDocument returned error: %v", err)
 	}
-	if got, want := stdout.String(), "list mob.md (not implemented)\n"; got != want {
-		t.Fatalf("stdout = %q, want %q", got, want)
+	if document != "mob.md" {
+		t.Fatalf("document = %q, want mob.md", document)
 	}
 }
 
@@ -197,7 +179,7 @@ func TestModesAreMutuallyExclusive(t *testing.T) {
 	}
 	var stdout, stderr bytes.Buffer
 
-	err := Execute([]string{document, "--show", "--list"}, "1.2.3", &stdout, &stderr)
+	err := Execute([]string{document, "--show", "--compact"}, "1.2.3", &stdout, &stderr)
 
 	if err == nil {
 		t.Fatal("expected error")

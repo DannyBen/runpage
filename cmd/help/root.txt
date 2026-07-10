@@ -17,8 +17,9 @@ Options:
     Open the interactive reader in read-only mode. Code blocks cannot be
     selected or executed.
 
-  --list, -l
-    List executable blocks with their nearest Markdown heading.
+  --compact, -c
+    Open an execution-focused interactive reader showing only executable code
+    blocks with their captions.
 
   --help, -h
     Show this help.

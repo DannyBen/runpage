@@ -14,9 +14,9 @@ import (
 var helpFiles embed.FS
 
 type options struct {
-	show bool
-	read bool
-	list bool
+	show    bool
+	read    bool
+	compact bool
 }
 
 func Execute(args []string, version string, stdout, stderr io.Writer) error {
@@ -55,12 +55,9 @@ func NewRootCommand(version string, stdout, stderr io.Writer) *cobra.Command {
 			switch {
 			case opts.show:
 				return showDocument(document, stdout)
-			case opts.list:
-				fmt.Fprintf(stdout, "list %s (not implemented)\n", document)
 			default:
-				return readDocument(document, cmd.InOrStdin(), stdout, opts.read)
+				return readDocument(document, cmd.InOrStdin(), stdout, opts.read, opts.compact)
 			}
-			return nil
 		},
 	}
 
@@ -72,8 +69,8 @@ func NewRootCommand(version string, stdout, stderr io.Writer) *cobra.Command {
 
 	root.Flags().BoolVarP(&opts.show, "show", "s", false, "render the document and exit")
 	root.Flags().BoolVarP(&opts.read, "read", "r", false, "open the interactive reader without execution")
-	root.Flags().BoolVarP(&opts.list, "list", "l", false, "list executable blocks with their nearest heading")
-	root.MarkFlagsMutuallyExclusive("show", "read", "list")
+	root.Flags().BoolVarP(&opts.compact, "compact", "c", false, "show only executable blocks in the interactive reader")
+	root.MarkFlagsMutuallyExclusive("show", "read", "compact")
 
 	return root
 }

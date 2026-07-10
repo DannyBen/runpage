@@ -90,6 +90,49 @@ func TestRenderMarkdownIndentedCodeBlock(t *testing.T) {
 	}
 }
 
+func TestRenderMarkdownCompactShowsOnlyCaptionedExecutableBlocks(t *testing.T) {
+	markdown := []byte(strings.Join([]string{
+		"# Build",
+		"",
+		"Explanatory prose.",
+		"",
+		"```bash",
+		"go test ./...",
+		"```",
+		"",
+		"## Example",
+		"",
+		"```yaml",
+		"mode: ignored",
+		"```",
+		"",
+		"## Release",
+		"",
+		"```sh :noop",
+		"echo ignored",
+		"```",
+		"",
+		"```sh",
+		"goreleaser release",
+		"```",
+	}, "\n"))
+	rendered := renderMarkdownMode(markdown, 80, false, 0, -1, nil, true)
+
+	for _, want := range []string{"Build", "go test ./...", "Release", "goreleaser release"} {
+		if !strings.Contains(rendered.text, want) {
+			t.Errorf("compact document missing %q:\n%s", want, rendered.text)
+		}
+	}
+	for _, unwanted := range []string{"Explanatory prose", "Example", "mode: ignored", "echo ignored"} {
+		if strings.Contains(rendered.text, unwanted) {
+			t.Errorf("compact document contains %q:\n%s", unwanted, rendered.text)
+		}
+	}
+	if len(rendered.blockLines) != 2 {
+		t.Fatalf("blockLines = %#v, want two executable blocks", rendered.blockLines)
+	}
+}
+
 func TestWrappingHelpers(t *testing.T) {
 	if got := wrapText("one two three", 7, "> "); strings.Join(got, "|") != "> one two|> three" {
 		t.Fatalf("wrapText = %#v", got)
