@@ -21,10 +21,11 @@ type readerModel struct {
 	output     io.Writer
 	viewport   viewport.Model
 	blockLines []int
+	readOnly   bool
 	err        error
 }
 
-func readDocument(path string, input io.Reader, output io.Writer) error {
+func readDocument(path string, input io.Reader, output io.Writer, readOnly bool) error {
 	if !terminalOutput(output) {
 		return fmt.Errorf("interactive reader requires a terminal (use --show for redirected output)")
 	}
@@ -33,7 +34,7 @@ func readDocument(path string, input io.Reader, output io.Writer) error {
 		return fmt.Errorf("read document %s: %w", path, err)
 	}
 
-	model := newReaderModel(markdown, output, renderWidth(output), 24)
+	model := newReaderModelWithMode(markdown, output, renderWidth(output), 24, readOnly)
 	program := tea.NewProgram(model, tea.WithInput(input), tea.WithOutput(output), tea.WithAltScreen())
 	final, err := program.Run()
 	if err != nil {
@@ -46,11 +47,21 @@ func readDocument(path string, input io.Reader, output io.Writer) error {
 }
 
 func newReaderModel(markdown []byte, output io.Writer, width, height int) readerModel {
+	return newReaderModelWithMode(markdown, output, width, height, false)
+}
+
+func newReaderModelWithMode(markdown []byte, output io.Writer, width, height int, readOnly bool) readerModel {
+	focused := 0
+	if readOnly {
+		focused = -1
+	}
 	model := readerModel{
 		markdown: markdown,
 		blocks:   executableBlocks(string(markdown)),
 		results:  make(map[int]executionResult),
 		running:  -1,
+		focused:  focused,
+		readOnly: readOnly,
 		output:   output,
 		viewport: viewport.New(width, max(1, height-1)),
 	}
@@ -76,12 +87,19 @@ func (model readerModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return model, tea.Quit
 		case "tab", "ctrl+down":
-			model.focus(1)
+			if !model.readOnly {
+				model.focus(1)
+			}
 			return model, nil
 		case "shift+tab", "ctrl+up":
-			model.focus(-1)
+			if !model.readOnly {
+				model.focus(-1)
+			}
 			return model, nil
 		case "enter":
+			if model.readOnly {
+				return model, nil
+			}
 			return model, model.startExecution()
 		case "g":
 			model.viewport.GotoTop()
@@ -109,6 +127,10 @@ func (model readerModel) View() string {
 		return fmt.Sprintf("error: %v\n", model.err)
 	}
 	status := "j/k scroll  •  Tab/Shift+Tab blocks  •  Enter execute  •  q quit"
+	if model.readOnly {
+		status = "read only  •  j/k scroll  •  q quit"
+		return model.viewport.View() + "\n" + status
+	}
 	if len(model.blocks) > 0 {
 		status = fmt.Sprintf("block %d/%d  •  %s", model.focused+1, len(model.blocks), status)
 	}

@@ -58,7 +58,7 @@ func NewRootCommand(version string, stdout, stderr io.Writer) *cobra.Command {
 			case opts.list:
 				fmt.Fprintf(stdout, "list %s (not implemented)\n", document)
 			default:
-				return readDocument(document, cmd.InOrStdin(), stdout)
+				return readDocument(document, cmd.InOrStdin(), stdout, opts.read)
 			}
 			return nil
 		},
@@ -71,7 +71,7 @@ func NewRootCommand(version string, stdout, stderr io.Writer) *cobra.Command {
 	root.CompletionOptions.DisableDefaultCmd = true
 
 	root.Flags().BoolVarP(&opts.show, "show", "s", false, "render the document and exit")
-	root.Flags().BoolVarP(&opts.read, "read", "r", false, "open the interactive reader (default)")
+	root.Flags().BoolVarP(&opts.read, "read", "r", false, "open the interactive reader without execution")
 	root.Flags().BoolVarP(&opts.list, "list", "l", false, "list executable blocks with their nearest heading")
 	root.MarkFlagsMutuallyExclusive("show", "read", "list")
 

@@ -14,7 +14,8 @@ Options:
     Render the document with colors and exit.
 
   --read, -r
-    Open the interactive reader. This is the default mode.
+    Open the interactive reader in read-only mode. Code blocks cannot be
+    selected or executed.
 
   --list, -l
     List executable blocks with their nearest Markdown heading.

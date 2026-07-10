@@ -29,6 +29,13 @@ Open the interactive reader:
 mob examples/showcase.md
 ```
 
+Open the interactive reader in read-only mode, without selecting or executing
+code blocks:
+
+```bash
+mob examples/showcase.md --read
+```
+
 Navigation keys:
 
 | Key | Action |
@@ -55,7 +62,8 @@ mob [FILE] [options]
 ```
 
 When `FILE` is omitted, Mob looks for `mob.md` and then `README.md`.
-Interactive reading is the default mode.
+Interactive reading with executable blocks is the default mode. Use `--read`
+for a read-only interactive view.
 
 ```bash
 mob README.md

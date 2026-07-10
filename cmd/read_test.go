@@ -37,6 +37,38 @@ func TestReaderMovesBetweenExecutableBlocks(t *testing.T) {
 	}
 }
 
+func TestReadOnlyReaderDoesNotSelectOrExecuteBlocks(t *testing.T) {
+	markdown := []byte("# Guide\n\n```bash\nprintf should-not-run\n```\n")
+	var output bytes.Buffer
+	model := newReaderModelWithMode(markdown, &output, 80, 20, true)
+
+	if model.focused != -1 {
+		t.Fatalf("focused = %d, want -1", model.focused)
+	}
+	if !strings.Contains(model.View(), "read only") {
+		t.Fatalf("read-only status missing:\n%s", model.View())
+	}
+	if strings.Contains(model.View(), "ready to execute") {
+		t.Fatalf("read-only view selected an executable block:\n%s", model.View())
+	}
+
+	for _, key := range []tea.KeyMsg{
+		{Type: tea.KeyTab},
+		{Type: tea.KeyShiftTab},
+		{Type: tea.KeyEnter},
+	} {
+		updated, command := model.Update(key)
+		model = updated.(readerModel)
+		if command != nil {
+			t.Fatalf("key %q returned an execution command", key.String())
+		}
+	}
+
+	if model.focused != -1 || model.running != -1 || len(model.results) != 0 {
+		t.Fatalf("read-only model changed execution state: %#v", model)
+	}
+}
+
 func TestCenteredOffset(t *testing.T) {
 	tests := []struct {
 		name     string
