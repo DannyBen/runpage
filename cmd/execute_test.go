@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -92,8 +93,17 @@ func TestExecuteBlockUsesWorkdir(t *testing.T) {
 	if message.result.exitCode != 0 {
 		t.Fatalf("result = %#v", message.result)
 	}
-	if got := strings.TrimSpace(message.result.stdout); got != workdir {
-		t.Fatalf("pwd = %q, want %q", got, workdir)
+	got := strings.TrimSpace(message.result.stdout)
+	gotInfo, err := os.Stat(got)
+	if err != nil {
+		t.Fatalf("stat pwd %q: %v", got, err)
+	}
+	wantInfo, err := os.Stat(workdir)
+	if err != nil {
+		t.Fatalf("stat workdir %q: %v", workdir, err)
+	}
+	if !os.SameFile(gotInfo, wantInfo) {
+		t.Fatalf("pwd = %q, want same directory as %q", got, workdir)
 	}
 }
 
