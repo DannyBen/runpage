@@ -22,6 +22,18 @@ printf 'shell: %s\n' "$SHELL"
 pwd
 ```
 
+## Python
+
+```python
+print("hello from Python")
+```
+
+## Ruby
+
+```ruby
+puts "hello from Ruby"
+```
+
 ## Display only
 
 ```shell :noop

@@ -34,6 +34,7 @@ func TestRootHelp(t *testing.T) {
 	assertContains(t, stdout.String(), "--show, -s")
 	assertContains(t, stdout.String(), "--read, -r")
 	assertContains(t, stdout.String(), "--compact, -c")
+	assertContains(t, stdout.String(), "--workdir DIR, -w DIR")
 }
 
 func TestVersion(t *testing.T) {
@@ -168,6 +169,57 @@ func TestExplicitDocumentErrors(t *testing.T) {
 				t.Fatal("expected error")
 			}
 			assertContains(t, err.Error(), test.want)
+		})
+	}
+}
+
+func TestResolveWorkdir(t *testing.T) {
+	base := t.TempDir()
+	dir := filepath.Join(base, "project")
+	if err := os.Mkdir(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(base, "file")
+	if err := os.WriteFile(file, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	resolved, err := resolveWorkdir(dir)
+	if err != nil {
+		t.Fatalf("resolveWorkdir returned error: %v", err)
+	}
+	if resolved != dir {
+		t.Fatalf("resolved = %q, want %q", resolved, dir)
+	}
+	t.Chdir(base)
+	resolved, err = resolveWorkdir("project")
+	if err != nil {
+		t.Fatalf("resolve relative workdir returned error: %v", err)
+	}
+	if resolved != dir {
+		t.Fatalf("relative resolved = %q, want %q", resolved, dir)
+	}
+	if _, err := resolveWorkdir(filepath.Join(base, "missing")); err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("missing error = %v", err)
+	}
+	if _, err := resolveWorkdir(file); err == nil || !strings.Contains(err.Error(), "not a directory") {
+		t.Fatalf("file error = %v", err)
+	}
+}
+
+func TestWorkdirIsValidatedBeforeOpeningReader(t *testing.T) {
+	document := filepath.Join(t.TempDir(), "guide.md")
+	if err := os.WriteFile(document, []byte("# Guide\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, flag := range []string{"--workdir", "-w"} {
+		t.Run(flag, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			err := Execute([]string{document, flag, filepath.Join(t.TempDir(), "missing")}, "1.2.3", &stdout, &stderr)
+			if err == nil {
+				t.Fatal("expected error")
+			}
+			assertContains(t, err.Error(), "working directory not found")
 		})
 	}
 }

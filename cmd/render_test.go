@@ -56,6 +56,20 @@ func TestRenderMarkdownColorsRunningBlock(t *testing.T) {
 	}
 }
 
+func TestRenderMarkdownCancellationStates(t *testing.T) {
+	markdown := []byte("```sh\nsleep 10\n```\n")
+	cancelling := renderReaderMarkdown(markdown, 80, true, 0, 0, nil, false, 0)
+	if !strings.Contains(cancelling.text, ansiBold+ansiYellow+" cancelling "+ansiReset) {
+		t.Fatalf("cancelling footer is not bold yellow:\n%q", cancelling.text)
+	}
+
+	results := map[int]executionResult{0: {exitCode: -1, cancelled: true}}
+	cancelled := renderMarkdown(markdown, 80, true, 0, -1, results)
+	if !strings.Contains(cancelled.text, ansiBold+ansiYellow+" cancelled "+ansiReset) {
+		t.Fatalf("cancelled footer is not bold yellow:\n%q", cancelled.text)
+	}
+}
+
 func TestRenderMarkdownDocumentStructures(t *testing.T) {
 	markdown := []byte(strings.Join([]string{
 		"# Guide",

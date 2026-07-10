@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -17,6 +18,7 @@ type options struct {
 	show    bool
 	read    bool
 	compact bool
+	workdir string
 }
 
 func Execute(args []string, version string, stdout, stderr io.Writer) error {
@@ -51,12 +53,16 @@ func NewRootCommand(version string, stdout, stderr io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			workdir, err := resolveWorkdir(opts.workdir)
+			if err != nil {
+				return err
+			}
 
 			switch {
 			case opts.show:
 				return showDocument(document, stdout)
 			default:
-				return readDocument(document, cmd.InOrStdin(), stdout, opts.read, opts.compact)
+				return readDocument(document, cmd.InOrStdin(), stdout, opts.read, opts.compact, workdir)
 			}
 		},
 	}
@@ -70,9 +76,31 @@ func NewRootCommand(version string, stdout, stderr io.Writer) *cobra.Command {
 	root.Flags().BoolVarP(&opts.show, "show", "s", false, "render the document and exit")
 	root.Flags().BoolVarP(&opts.read, "read", "r", false, "open the interactive reader without execution")
 	root.Flags().BoolVarP(&opts.compact, "compact", "c", false, "show only executable blocks in the interactive reader")
+	root.Flags().StringVarP(&opts.workdir, "workdir", "w", "", "directory used to execute code blocks")
 	root.MarkFlagsMutuallyExclusive("show", "read", "compact")
 
 	return root
+}
+
+func resolveWorkdir(path string) (string, error) {
+	if path == "" {
+		return "", nil
+	}
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("resolve working directory %s: %w", path, err)
+	}
+	info, err := os.Stat(absolute)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("working directory not found: %s", path)
+		}
+		return "", fmt.Errorf("open working directory %s: %w", path, err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("working directory is not a directory: %s", path)
+	}
+	return absolute, nil
 }
 
 func rootHelp(cmd *cobra.Command, _ []string) {

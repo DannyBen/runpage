@@ -34,6 +34,7 @@ type terminalRenderer struct {
 	color      bool
 	focused    int
 	running    int
+	cancelling int
 	results    map[int]executionResult
 	lines      []string
 	blockLines []int
@@ -47,9 +48,13 @@ func renderMarkdown(source []byte, width int, color bool, focused, running int, 
 }
 
 func renderMarkdownMode(source []byte, width int, color bool, focused, running int, results map[int]executionResult, compact bool) renderedDocument {
+	return renderReaderMarkdown(source, width, color, focused, running, results, compact, -1)
+}
+
+func renderReaderMarkdown(source []byte, width int, color bool, focused, running int, results map[int]executionResult, compact bool, cancelling int) renderedDocument {
 	markdown := goldmark.New(goldmark.WithExtensions(extension.GFM))
 	document := markdown.Parser().Parse(textm.NewReader(source))
-	renderer := &terminalRenderer{source: source, width: max(20, width), color: color, focused: focused, running: running, results: results, compact: compact}
+	renderer := &terminalRenderer{source: source, width: max(20, width), color: color, focused: focused, running: running, cancelling: cancelling, results: results, compact: compact}
 	for node := document.FirstChild(); node != nil; node = node.NextSibling() {
 		renderer.renderBlock(node, "")
 	}
@@ -129,8 +134,12 @@ func (r *terminalRenderer) renderFence(node *ast.FencedCodeBlock, prefix string)
 	r.executable++
 	result, executed := r.results[index]
 	status, style := "ready", ansiCyan
-	if index == r.running {
+	if index == r.cancelling {
+		status, style = "cancelling", ansiYellow
+	} else if index == r.running {
 		status, style = "running", ansiYellow
+	} else if executed && result.cancelled {
+		status, style = "cancelled", ansiYellow
 	} else if executed && result.exitCode == 0 {
 		status, style = "success", ansiGreen
 	} else if executed {

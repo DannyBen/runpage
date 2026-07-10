@@ -23,10 +23,12 @@ type readerModel struct {
 	blockLines []int
 	readOnly   bool
 	compact    bool
+	workdir    string
+	cancelling bool
 	err        error
 }
 
-func readDocument(path string, input io.Reader, output io.Writer, readOnly, compact bool) error {
+func readDocument(path string, input io.Reader, output io.Writer, readOnly, compact bool, workdir string) error {
 	if !terminalOutput(output) {
 		return fmt.Errorf("interactive reader requires a terminal (use --show for redirected output)")
 	}
@@ -35,7 +37,7 @@ func readDocument(path string, input io.Reader, output io.Writer, readOnly, comp
 		return fmt.Errorf("read document %s: %w", path, err)
 	}
 
-	model := newReaderModelWithMode(markdown, output, renderWidth(output), 24, readOnly, compact)
+	model := newReaderModelWithMode(markdown, output, renderWidth(output), 24, readOnly, compact, workdir)
 	program := tea.NewProgram(model, tea.WithInput(input), tea.WithOutput(output), tea.WithAltScreen())
 	final, err := program.Run()
 	if err != nil {
@@ -48,10 +50,10 @@ func readDocument(path string, input io.Reader, output io.Writer, readOnly, comp
 }
 
 func newReaderModel(markdown []byte, output io.Writer, width, height int) readerModel {
-	return newReaderModelWithMode(markdown, output, width, height, false, false)
+	return newReaderModelWithMode(markdown, output, width, height, false, false, "")
 }
 
-func newReaderModelWithMode(markdown []byte, output io.Writer, width, height int, readOnly, compact bool) readerModel {
+func newReaderModelWithMode(markdown []byte, output io.Writer, width, height int, readOnly, compact bool, workdir string) readerModel {
 	focused := 0
 	if readOnly {
 		focused = -1
@@ -64,6 +66,7 @@ func newReaderModelWithMode(markdown []byte, output io.Writer, width, height int
 		focused:  focused,
 		readOnly: readOnly,
 		compact:  compact,
+		workdir:  workdir,
 		output:   output,
 		viewport: viewport.New(width, max(1, height-1)),
 	}
@@ -79,11 +82,22 @@ func (model readerModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		model.results[message.index] = message.result
 		model.running = -1
 		model.cancel = nil
+		model.cancelling = false
 		model.render(false)
 		return model, nil
 	case tea.KeyMsg:
 		switch message.String() {
-		case "q", "ctrl+c":
+		case "q", "esc":
+			if model.running >= 0 && !model.cancelling {
+				if model.cancel != nil {
+					model.cancel()
+				}
+				model.cancelling = true
+				model.render(false)
+				return model, nil
+			}
+			return model, tea.Quit
+		case "ctrl+c":
 			if model.cancel != nil {
 				model.cancel()
 			}
@@ -128,13 +142,19 @@ func (model readerModel) View() string {
 	if model.err != nil {
 		return fmt.Sprintf("error: %v\n", model.err)
 	}
-	status := "j/k scroll  •  Tab/Shift+Tab blocks  •  Enter execute  •  q quit"
+	status := "j/k scroll  •  Tab/Shift+Tab blocks  •  Enter execute  •  q/Esc quit"
 	if model.readOnly {
-		status = "read only  •  j/k scroll  •  q quit"
+		status = "read only  •  j/k scroll  •  q/Esc quit"
 		return model.viewport.View() + "\n" + status
 	}
 	if len(model.blocks) > 0 {
 		status = fmt.Sprintf("block %d/%d  •  %s", model.focused+1, len(model.blocks), status)
+	}
+	if model.running >= 0 {
+		status = "running  •  q/Esc cancel"
+	}
+	if model.cancelling {
+		status = "cancelling  •  q/Esc again to quit"
 	}
 	if model.compact {
 		status = "compact  •  " + status
@@ -161,11 +181,15 @@ func (model *readerModel) startExecution() tea.Cmd {
 	block := model.blocks[index]
 	model.render(true)
 	columns := max(20, model.viewport.Width-codeFrameOverhead)
-	return func() tea.Msg { return executeBlock(ctx, index, block, columns) }
+	return func() tea.Msg { return executeBlock(ctx, index, block, columns, model.workdir) }
 }
 
 func (model *readerModel) render(scrollToFocus bool) {
-	rendered := renderMarkdownMode(model.markdown, model.viewport.Width, colorOutput(model.output), model.focused, model.running, model.results, model.compact)
+	cancelling := -1
+	if model.cancelling {
+		cancelling = model.running
+	}
+	rendered := renderReaderMarkdown(model.markdown, model.viewport.Width, colorOutput(model.output), model.focused, model.running, model.results, model.compact, cancelling)
 	model.err = nil
 	model.viewport.SetContent(rendered.text)
 	model.blockLines = rendered.blockLines

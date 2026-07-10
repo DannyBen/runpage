@@ -41,7 +41,7 @@ func TestReaderMovesBetweenExecutableBlocks(t *testing.T) {
 func TestReadOnlyReaderDoesNotSelectOrExecuteBlocks(t *testing.T) {
 	markdown := []byte("# Guide\n\n```bash\nprintf should-not-run\n```\n")
 	var output bytes.Buffer
-	model := newReaderModelWithMode(markdown, &output, 80, 20, true, false)
+	model := newReaderModelWithMode(markdown, &output, 80, 20, true, false, "")
 
 	if model.focused != -1 {
 		t.Fatalf("focused = %d, want -1", model.focused)
@@ -172,5 +172,53 @@ func TestReaderExecutesSuccessAndFailure(t *testing.T) {
 	}
 	if !strings.Contains(model.View(), "failed") {
 		t.Fatalf("stderr missing:\n%s", model.View())
+	}
+}
+
+func TestReaderCancelsBeforeQuitting(t *testing.T) {
+	for _, key := range []tea.KeyMsg{
+		{Type: tea.KeyRunes, Runes: []rune{'q'}},
+		{Type: tea.KeyEsc},
+	} {
+		t.Run(key.String(), func(t *testing.T) {
+			var output bytes.Buffer
+			model := newReaderModel([]byte("```sh\nsleep 10\n```\n"), &output, 80, 20)
+			cancelled := false
+			model.running = 0
+			model.cancel = func() { cancelled = true }
+
+			updated, command := model.Update(key)
+			model = updated.(readerModel)
+			if command != nil {
+				t.Fatal("first cancel key quit the reader")
+			}
+			if !cancelled || !model.cancelling {
+				t.Fatalf("cancel state = cancelled:%v cancelling:%v", cancelled, model.cancelling)
+			}
+			if !strings.Contains(model.View(), "cancelling") {
+				t.Fatalf("cancelling status missing:\n%s", model.View())
+			}
+
+			_, command = model.Update(key)
+			if command == nil {
+				t.Fatal("second cancel key did not quit")
+			}
+		})
+	}
+}
+
+func TestReaderShowsCancelledResult(t *testing.T) {
+	var output bytes.Buffer
+	model := newReaderModel([]byte("```sh\nsleep 10\n```\n"), &output, 80, 20)
+	model.running = 0
+	model.cancelling = true
+	updated, _ := model.Update(executionFinishedMsg{index: 0, result: executionResult{exitCode: -1, cancelled: true}})
+	model = updated.(readerModel)
+
+	if model.running != -1 || model.cancelling {
+		t.Fatalf("execution state was not cleared: %#v", model)
+	}
+	if !strings.Contains(model.View(), "cancelled") {
+		t.Fatalf("cancelled result missing:\n%s", model.View())
 	}
 }

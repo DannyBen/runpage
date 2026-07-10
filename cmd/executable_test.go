@@ -50,6 +50,32 @@ func TestShellAndConsoleBlocksAreExecutable(t *testing.T) {
 	}
 }
 
+func TestPythonAndRubyBlocksAreExecutable(t *testing.T) {
+	markdown := strings.Join([]string{
+		"```python",
+		"print('python')",
+		"```",
+		"```py",
+		"print('py')",
+		"```",
+		"```ruby",
+		"puts 'ruby'",
+		"```",
+		"```rb",
+		"puts 'rb'",
+		"```",
+	}, "\n")
+	blocks := executableBlocks(markdown)
+	if len(blocks) != 4 {
+		t.Fatalf("blocks = %#v, want four executable blocks", blocks)
+	}
+	for index, language := range []string{"python", "py", "ruby", "rb"} {
+		if blocks[index].language != language {
+			t.Fatalf("blocks[%d].language = %q, want %q", index, blocks[index].language, language)
+		}
+	}
+}
+
 func TestFenceParsingEdges(t *testing.T) {
 	markdown := strings.Join([]string{
 		"    ```bash",

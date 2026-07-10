@@ -21,6 +21,10 @@ Options:
     Open an execution-focused interactive reader showing only executable code
     blocks with their captions.
 
+  --workdir DIR, -w DIR
+    Run executable code blocks from DIR. Relative paths are resolved from the
+    directory where Mob was started.
+
   --help, -h
     Show this help.
 

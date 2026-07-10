@@ -11,9 +11,10 @@ type executableBlock struct {
 }
 
 type executionResult struct {
-	exitCode int
-	stdout   string
-	stderr   string
+	exitCode  int
+	stdout    string
+	stderr    string
+	cancelled bool
 }
 
 func executableBlocks(markdown string) []executableBlock {
@@ -88,7 +89,7 @@ func executableLanguage(info string) (string, bool) {
 		}
 	}
 	switch language {
-	case "bash", "sh", "shell", "zsh", "console":
+	case "bash", "sh", "shell", "zsh", "console", "python", "py", "ruby", "rb":
 		return language, true
 	default:
 		return language, false

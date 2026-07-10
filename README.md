@@ -24,6 +24,7 @@ are in [INSTALL.md](INSTALL.md).
 - Read a complete Markdown document in a terminal-native interactive view.
 - Move directly between executable code blocks and run the selected block.
 - Keep command status, standard output, standard error, and exit results inline.
+- Run every executable block from an explicit working directory when needed.
 - Use compact mode for an execution-focused view without surrounding prose.
 - Use read-only mode to browse a document without selecting or executing code.
 - Render a static, script-friendly view for redirected output.
@@ -46,6 +47,7 @@ Choose a focused mode when needed:
 mob runbook.md --read
 mob runbook.md --compact
 mob runbook.md --show
+mob runbook.md --workdir path/to/project
 ```
 
 | Mode | Purpose |
@@ -54,6 +56,9 @@ mob runbook.md --show
 | `--read`, `-r` | Read the full document without execution |
 | `--compact`, `-c` | Show only captioned executable blocks |
 | `--show`, `-s` | Render the complete document and exit |
+
+Use `--workdir DIR` (`-w DIR`) to run every executable block from a specific
+directory. Without it, commands run from the directory where Mob was started.
 
 Add `:noop` to a fence info string to keep that block display-only.
 
@@ -67,7 +72,7 @@ Add `:noop` to a fence info string to keep that block display-only.
 | `Ctrl+Up` / `Ctrl+Down` | Select the previous or next executable block |
 | `Enter` | Execute the selected block |
 | `g` / `G` | Move to the beginning or end |
-| `q` | Quit and cancel an active command |
+| `q` / `Esc` | Cancel an active command; press again to quit |
 
 ## Examples
 
