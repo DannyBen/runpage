@@ -103,6 +103,42 @@ func TestReaderNavigationResizeAndQuit(t *testing.T) {
 	}
 }
 
+func TestReaderTogglesKeyBindingHelp(t *testing.T) {
+	markdown := []byte("# Guide\n\n```bash\nop check\n```\n")
+	var output bytes.Buffer
+	model := newReaderModel(markdown, &output, 80, 20)
+
+	updated, command := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+	model = updated.(readerModel)
+	if command != nil || !model.showHelp {
+		t.Fatalf("opening help = showHelp:%v command:%v", model.showHelp, command)
+	}
+	for _, want := range []string{"Runpage key bindings", "Tab / Shift+Tab", "Enter", "?/Esc close"} {
+		if !strings.Contains(model.View(), want) {
+			t.Errorf("help view missing %q:\n%s", want, model.View())
+		}
+	}
+
+	updated, command = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model = updated.(readerModel)
+	if command != nil || model.showHelp {
+		t.Fatalf("closing help = showHelp:%v command:%v", model.showHelp, command)
+	}
+	if !strings.Contains(model.View(), "ready to execute") {
+		t.Fatalf("document did not return after closing help:\n%s", model.View())
+	}
+}
+
+func TestReadOnlyKeyBindingHelpOmitsExecutionControls(t *testing.T) {
+	var output bytes.Buffer
+	model := newReaderModelWithMode([]byte("# Guide\n"), &output, 80, 20, true, false, "")
+	model.showHelp = true
+
+	if strings.Contains(model.View(), "Select next") || strings.Contains(model.View(), "Execute selected") {
+		t.Fatalf("read-only help includes execution controls:\n%s", model.View())
+	}
+}
+
 func TestReaderWithoutBlocksIgnoresExecutionControls(t *testing.T) {
 	var output bytes.Buffer
 	model := newReaderModel([]byte("# Guide\n\nNo commands.\n"), &output, 80, 20)

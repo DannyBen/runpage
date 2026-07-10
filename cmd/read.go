@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -25,6 +26,7 @@ type readerModel struct {
 	compact    bool
 	workdir    string
 	cancelling bool
+	showHelp   bool
 	err        error
 }
 
@@ -83,7 +85,16 @@ func (model readerModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		return model, nil
 	case tea.KeyMsg:
 		switch message.String() {
-		case "q", "esc":
+		case "?":
+			model.showHelp = !model.showHelp
+			return model, nil
+		case "esc":
+			if model.showHelp {
+				model.showHelp = false
+				return model, nil
+			}
+			fallthrough
+		case "q":
 			if model.running >= 0 && !model.cancelling {
 				if model.cancel != nil {
 					model.cancel()
@@ -138,9 +149,12 @@ func (model readerModel) View() string {
 	if model.err != nil {
 		return fmt.Sprintf("error: %v\n", model.err)
 	}
-	status := "j/k scroll  •  Tab/Shift+Tab blocks  •  Enter execute  •  q/Esc quit"
+	if model.showHelp {
+		return model.helpView()
+	}
+	status := "j/k scroll  •  Tab/Shift+Tab blocks  •  Enter execute  •  ? help  •  q/Esc quit"
 	if model.readOnly {
-		status = "read only  •  j/k scroll  •  q/Esc quit"
+		status = "read only  •  j/k scroll  •  ? help  •  q/Esc quit"
 		return model.viewport.View() + "\n" + status
 	}
 	if len(model.blocks) > 0 {
@@ -156,6 +170,32 @@ func (model readerModel) View() string {
 		status = "compact  •  " + status
 	}
 	return model.viewport.View() + "\n" + status
+}
+
+func (model readerModel) helpView() string {
+	lines := []string{
+		"Runpage key bindings",
+		"",
+		"j / k, ↑ / ↓       Scroll",
+		"PgUp / PgDn         Scroll one page",
+		"g / G               Go to top / bottom",
+	}
+	if !model.readOnly {
+		lines = append(lines,
+			"Tab / Shift+Tab     Select next / previous block",
+			"Ctrl+↓ / Ctrl+↑     Select next / previous block",
+			"Enter               Execute selected block",
+		)
+	}
+	lines = append(lines,
+		"?                   Close help",
+		"Esc                 Close help",
+		"q                   Quit (or cancel running block)",
+		"Ctrl+C              Quit immediately",
+	)
+	help := viewport.New(model.viewport.Width, model.viewport.Height)
+	help.SetContent(strings.Join(lines, "\n"))
+	return help.View() + "\nhelp  •  ?/Esc close  •  q quit"
 }
 
 func (model *readerModel) focus(delta int) {
