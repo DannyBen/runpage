@@ -1,0 +1,26 @@
+Markdown Ops Book
+
+Usage:
+  mob [FILE] [options]
+  mob --help | -h | --version
+
+Arguments:
+  FILE
+    Markdown document to open.
+    When omitted, Mob uses mob.md and then README.md.
+
+Options:
+  --show, -s
+    Render the document with colors and exit.
+
+  --read, -r
+    Open the interactive reader. This is the default mode.
+
+  --list, -l
+    List executable blocks with their nearest Markdown heading.
+
+  --help, -h
+    Show this help.
+
+  --version
+    Show the Mob version.
