@@ -12,7 +12,7 @@ type failingWriter struct{}
 func (failingWriter) Write([]byte) (int, error) { return 0, errors.New("write failed") }
 
 func TestShowDocumentErrors(t *testing.T) {
-	if err := showDocument(filepath.Join(t.TempDir(), "missing.md"), os.Stdout); err == nil {
+	if _, err := loadDocument(filepath.Join(t.TempDir(), "missing.md"), nil); err == nil {
 		t.Fatal("expected missing document error")
 	}
 
@@ -20,7 +20,7 @@ func TestShowDocumentErrors(t *testing.T) {
 	if err := os.WriteFile(document, []byte("# Guide\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := showDocument(document, failingWriter{}); err == nil || err.Error() != "write failed" {
+	if err := showDocument([]byte("# Guide\n"), failingWriter{}); err == nil || err.Error() != "write failed" {
 		t.Fatalf("write error = %v", err)
 	}
 }

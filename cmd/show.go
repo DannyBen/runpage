@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"strconv"
@@ -11,14 +10,9 @@ import (
 
 const defaultRenderWidth = 80
 
-func showDocument(path string, output io.Writer) error {
-	markdown, err := os.ReadFile(path)
-	if err != nil {
-		return fmt.Errorf("read document %s: %w", path, err)
-	}
-
+func showDocument(markdown []byte, output io.Writer) error {
 	rendered := renderMarkdown(markdown, renderWidth(output), colorOutput(output), -1, -1, nil)
-	_, err = io.WriteString(output, rendered.text+"\n")
+	_, err := io.WriteString(output, rendered.text+"\n")
 	return err
 }
 

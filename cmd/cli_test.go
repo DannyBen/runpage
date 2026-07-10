@@ -30,11 +30,12 @@ func TestRootHelp(t *testing.T) {
 		t.Fatalf("stderr = %q", stderr.String())
 	}
 	assertContains(t, stdout.String(), "Markdown Ops Book")
-	assertContains(t, stdout.String(), "mob [FILE] [options]")
+	assertContains(t, stdout.String(), "mob [FILE] [options] [KEY:VALUE...]")
 	assertContains(t, stdout.String(), "--show, -s")
 	assertContains(t, stdout.String(), "--read, -r")
 	assertContains(t, stdout.String(), "--compact, -c")
 	assertContains(t, stdout.String(), "--workdir DIR, -w DIR")
+	assertContains(t, stdout.String(), "YAML front matter")
 }
 
 func TestVersion(t *testing.T) {
@@ -105,6 +106,22 @@ func TestShowRendersMarkdown(t *testing.T) {
 	if stderr.Len() != 0 {
 		t.Fatalf("stderr = %q", stderr.String())
 	}
+}
+
+func TestShowInjectsDocumentValues(t *testing.T) {
+	document := filepath.Join(t.TempDir(), "release.md")
+	markdown := "# Release $version\n\n```sh\nprintf '{{ version }}'\n```\n"
+	if err := os.WriteFile(document, []byte(markdown), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	err := Execute([]string{document, "version:1.0.0", "--show"}, "1.2.3", &stdout, &stderr)
+	if err != nil {
+		t.Fatalf("Execute returned error: %v", err)
+	}
+	assertContains(t, stdout.String(), "Release 1.0.0")
+	assertContains(t, stdout.String(), "printf '1.0.0'")
 }
 
 func TestDefaultDocumentPreference(t *testing.T) {
@@ -221,6 +238,18 @@ func TestWorkdirIsValidatedBeforeOpeningReader(t *testing.T) {
 			}
 			assertContains(t, err.Error(), "working directory not found")
 		})
+	}
+}
+
+func TestWorkdirSelfIsAccepted(t *testing.T) {
+	document := filepath.Join(t.TempDir(), "guide.md")
+	if err := os.WriteFile(document, []byte("# Guide\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+	err := Execute([]string{document, "--workdir", "self"}, "1.2.3", &stdout, &stderr)
+	if err == nil || !strings.Contains(err.Error(), "interactive reader requires a terminal") {
+		t.Fatalf("error = %v", err)
 	}
 }
 

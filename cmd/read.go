@@ -28,13 +28,9 @@ type readerModel struct {
 	err        error
 }
 
-func readDocument(path string, input io.Reader, output io.Writer, readOnly, compact bool, workdir string) error {
+func readDocument(markdown []byte, input io.Reader, output io.Writer, readOnly, compact bool, workdir string) error {
 	if !terminalOutput(output) {
 		return fmt.Errorf("interactive reader requires a terminal (use --show for redirected output)")
-	}
-	markdown, err := os.ReadFile(path)
-	if err != nil {
-		return fmt.Errorf("read document %s: %w", path, err)
 	}
 
 	model := newReaderModelWithMode(markdown, output, renderWidth(output), 24, readOnly, compact, workdir)

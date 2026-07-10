@@ -1,13 +1,22 @@
 Markdown Ops Book
 
 Usage:
-  mob [FILE] [options]
+  mob [FILE] [options] [KEY:VALUE...]
   mob --help | -h | --version
 
 Arguments:
   FILE
     Markdown document to open.
     When omitted, Mob uses mob.md and then README.md.
+
+  KEY:VALUE
+    Replace $KEY and {{ KEY }} throughout the document before rendering or
+    execution. Repeat for additional values.
+
+Document configuration:
+  YAML front matter under the mob key may declare required values,
+  dependencies, and a workdir. Use --read to inspect a document without
+  satisfying its value or dependency requirements.
 
 Options:
   --show, -s
@@ -23,7 +32,8 @@ Options:
 
   --workdir DIR, -w DIR
     Run executable code blocks from DIR. Relative paths are resolved from the
-    directory where Mob was started.
+    directory where Mob was started. Use self or self/... for paths relative to
+    the document's directory.
 
   --help, -h
     Show this help.

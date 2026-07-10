@@ -59,8 +59,68 @@ mob runbook.md --workdir path/to/project
 
 Use `--workdir DIR` (`-w DIR`) to run every executable block from a specific
 directory. Without it, commands run from the directory where Mob was started.
+Use the reserved `self` path root to resolve a workdir from the directory
+containing the Markdown document:
+
+```bash
+mob path/to/runbook.md --workdir self
+mob path/to/runbook.md --workdir self/tasks
+```
+
+`self` selects the document directory, while `self/tasks` selects its `tasks`
+subdirectory and `self/..` selects its parent. Use `./self` to refer to a real
+launch-relative directory named `self`.
 
 Add `:noop` to a fence info string to keep that block display-only.
+
+## Document Values
+
+Pass `KEY:VALUE` arguments after the document to inject values before Mob
+renders or executes it:
+
+```bash
+mob release.md version:1.0.0
+```
+
+Both `$KEY` and `{{ KEY }}` placeholders are replaced throughout the document,
+including executable blocks:
+
+```markdown
+# Release $version
+
+Deploying version {{ version }}.
+```
+
+Repeat the argument to provide more values. Mob splits each argument at its
+first colon, so values may contain additional colons. Values are inserted
+literally in a single pass and are not escaped for the surrounding code.
+
+## Document Configuration
+
+A document can declare Mob configuration in YAML front matter:
+
+```yaml
+---
+mob:
+  required: [version]
+  dependencies: [git, curl]
+  workdir: self
+---
+```
+
+- `required` lists non-empty document values that must be provided.
+- `dependencies` lists executables required by execution-enabled modes.
+- `workdir` sets the directory used to execute blocks.
+
+Missing required values prevent the default, compact, and static modes from
+opening the document. `--read` bypasses value and dependency requirements so
+the unexpanded document can still be inspected safely. Dependency checks apply
+only to execution-enabled modes. A CLI `--workdir` value overrides front matter.
+In either location, `self` and `self/...` resolve from the directory containing
+the document; other relative paths resolve from the directory where Mob was
+started.
+
+Front matter is configuration only and is not included in rendered output.
 
 ## Navigation
 

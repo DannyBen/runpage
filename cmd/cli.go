@@ -47,22 +47,48 @@ func NewRootCommand(version string, stdout, stderr io.Writer) *cobra.Command {
 		Version:       version,
 		SilenceUsage:  true,
 		SilenceErrors: true,
-		Args:          cobra.MaximumNArgs(1),
+		Args:          cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			document, err := resolveDocument(args)
+			documentArgs := args
+			valueArgs := []string(nil)
+			if len(args) > 0 {
+				documentArgs = args[:1]
+				valueArgs = args[1:]
+			}
+			document, err := resolveDocument(documentArgs)
 			if err != nil {
 				return err
 			}
-			workdir, err := resolveWorkdir(opts.workdir)
+			values, err := parseDocumentValues(valueArgs)
 			if err != nil {
 				return err
+			}
+			loaded, err := loadDocument(document, values)
+			if err != nil {
+				return err
+			}
+			if !opts.read {
+				if err := requireDocumentValues(loaded.config, values); err != nil {
+					return err
+				}
+			}
+
+			workdir := ""
+			if !opts.read && !opts.show {
+				if err := requireDependencies(loaded.config); err != nil {
+					return err
+				}
+				workdir, err = resolveDocumentWorkdir(loaded.config, opts.workdir, document)
+				if err != nil {
+					return err
+				}
 			}
 
 			switch {
 			case opts.show:
-				return showDocument(document, stdout)
+				return showDocument(loaded.markdown, stdout)
 			default:
-				return readDocument(document, cmd.InOrStdin(), stdout, opts.read, opts.compact, workdir)
+				return readDocument(loaded.markdown, cmd.InOrStdin(), stdout, opts.read, opts.compact, workdir)
 			}
 		},
 	}
