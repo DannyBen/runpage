@@ -19,6 +19,7 @@ const (
 	ansiRed      = "\x1b[31m"
 	ansiGreen    = "\x1b[32m"
 	ansiYellow   = "\x1b[33m"
+	ansiBlue     = "\x1b[34m"
 	ansiCyan     = "\x1b[36m"
 	ansiBoldBlue = "\x1b[1;34m"
 )
@@ -152,7 +153,7 @@ func (r *terminalRenderer) renderFence(node *ast.FencedCodeBlock, prefix string)
 	if index == r.cancelling {
 		status, style = "cancelling", ansiYellow
 	} else if index == r.running {
-		status, style = "running", ansiYellow
+		status, style = "running", ansiBlue
 	} else if executed && result.cancelled {
 		status, style = "cancelled", ansiYellow
 	} else if executed && result.exitCode == 0 {

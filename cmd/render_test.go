@@ -51,8 +51,11 @@ func TestRenderMarkdownColorsExecutionState(t *testing.T) {
 func TestRenderMarkdownColorsRunningBlock(t *testing.T) {
 	markdown := []byte("```bash\nsleep 1\n```\n")
 	rendered := renderMarkdown(markdown, 80, true, -1, 0, nil)
-	if !strings.Contains(rendered.text, ansiBold+ansiYellow+" running "+ansiReset) {
-		t.Fatalf("running footer is not bold yellow:\n%q", rendered.text)
+	if !strings.Contains(rendered.text, ansiBlue+"│ "+ansiReset+"sleep 1") {
+		t.Fatalf("running block border is not blue:\n%q", rendered.text)
+	}
+	if !strings.Contains(rendered.text, ansiBold+ansiBlue+" running "+ansiReset) {
+		t.Fatalf("running footer is not bold blue:\n%q", rendered.text)
 	}
 }
 
