@@ -1,80 +1,84 @@
-# Mob
+# Mob - Markdown Ops Book
 
-Markdown Ops Book.
+![repocard](https://repocard.dannyben.com/svg/mob.svg)
 
-Mob presents Markdown as one continuous terminal document. Shell code blocks
-can be selected and executed in place, with their status, stdout, and stderr
-kept inside the block's frame.
-
-## Features
-
-- Terminal-native Markdown rendering with wrapped prose and compact tables.
-- Keyboard navigation through the complete document.
-- Executable `bash`, `sh`, `zsh`, `shell`, and `console` fences.
-- Distinct ready, running, successful, and failed block states.
-- Inline stdout, stderr, and exit-status results.
-- Static rendering for scripts and redirected output.
+`mob` turns Markdown documents into interactive terminal runbooks. It keeps the
+document in one continuous view, lets you move between executable code blocks,
+and shows status, output, errors, and exit results directly inside each block.
 
 Opening a document never executes its code automatically.
 
-The static Markdown viewer is available now:
+## Install
+
+The simplest option is with `eget`:
 
 ```bash
-mob examples/showcase.md --show
+eget dannyben/mob
 ```
 
-Open the interactive reader:
+Additional installation methods, including Go and GitHub Release archives,
+are in [INSTALL.md](INSTALL.md).
+
+## Highlights
+
+- Read a complete Markdown document in a terminal-native interactive view.
+- Move directly between executable code blocks and run the selected block.
+- Keep command status, standard output, standard error, and exit results inline.
+- Use compact mode for an execution-focused view without surrounding prose.
+- Use read-only mode to browse a document without selecting or executing code.
+- Render a static, script-friendly view for redirected output.
+- Mark individual blocks as display-only with `:noop`.
+
+## Usage
+
+Open a document in the interactive reader:
 
 ```bash
-mob examples/showcase.md
+mob path/to/runbook.md
 ```
 
-Open the interactive reader in read-only mode, without selecting or executing
-code blocks:
+When no file is provided, Mob looks for `mob.md` and then `README.md` in the
+current directory.
+
+Choose a focused mode when needed:
 
 ```bash
-mob examples/showcase.md --read
+mob runbook.md --read
+mob runbook.md --compact
+mob runbook.md --show
 ```
 
-Navigation keys:
+| Mode | Purpose |
+| --- | --- |
+| default | Read the full document and execute selected blocks |
+| `--read`, `-r` | Read the full document without execution |
+| `--compact`, `-c` | Show only captioned executable blocks |
+| `--show`, `-s` | Render the complete document and exit |
+
+Add `:noop` to a fence info string to keep that block display-only.
+
+## Navigation
 
 | Key | Action |
 | --- | --- |
 | `j` / `k`, arrows | Scroll the document |
 | `Page Up` / `Page Down` | Scroll by viewport |
 | `Tab` / `Shift+Tab` | Select the next or previous executable block |
+| `Ctrl+Up` / `Ctrl+Down` | Select the previous or next executable block |
 | `Enter` | Execute the selected block |
 | `g` / `G` | Move to the beginning or end |
 | `q` | Quit and cancel an active command |
 
-Add `:noop` to a fence info string to keep a shell block display-only:
+## Examples
 
-````markdown
-```bash :noop
-git push origin main
-```
-````
-
-## Usage
+The [examples](examples/) folder contains documents for static rendering,
+interactive execution, compact mode, and execution results.
 
 ```bash
-mob [FILE] [options]
+mob examples/showcase.md
+mob examples/execution-demo.md --compact
+mob examples/release-checklist.md --read
 ```
-
-When `FILE` is omitted, Mob looks for `mob.md` and then `README.md`.
-Interactive reading with executable blocks is the default mode. Use `--read`
-for a read-only interactive view.
-
-```bash
-mob README.md
-mob README.md --show
-mob README.md --read
-mob README.md --compact
-```
-
-`--show` renders the complete document and exits. `--read` opens the full
-document without execution. `--compact` opens an execution-focused interactive
-view containing only executable blocks with their captions.
 
 ## Development
 
@@ -82,16 +86,3 @@ view containing only executable blocks with their captions.
 op check
 op mob --help
 ```
-
-## Install
-
-### With eget
-
-```bash
-eget DannyBen/mob --to ~/bin/mob
-```
-
-### From GitHub Releases
-
-Download the archive for your operating system and CPU from the Releases page,
-extract it, and put `mob` somewhere on your `PATH`.
