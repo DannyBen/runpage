@@ -13,21 +13,22 @@ import (
 )
 
 type readerModel struct {
-	markdown   []byte
-	blocks     []executableBlock
-	results    map[int]executionResult
-	running    int
-	cancel     context.CancelFunc
-	focused    int
-	output     io.Writer
-	viewport   viewport.Model
-	blockLines []int
-	readOnly   bool
-	compact    bool
-	workdir    string
-	cancelling bool
-	showHelp   bool
-	err        error
+	markdown    []byte
+	blocks      []executableBlock
+	results     map[int]executionResult
+	running     int
+	cancel      context.CancelFunc
+	focused     int
+	output      io.Writer
+	viewport    viewport.Model
+	blockLines  []int
+	blockRanges []lineRange
+	readOnly    bool
+	compact     bool
+	workdir     string
+	cancelling  bool
+	showHelp    bool
+	err         error
 }
 
 func readDocument(markdown []byte, input io.Reader, output io.Writer, readOnly, compact bool, workdir string) error {
@@ -75,6 +76,7 @@ func newReaderModelWithMode(markdown []byte, output io.Writer, width, height int
 func (model readerModel) Init() tea.Cmd { return nil }
 
 func (model readerModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
+	followScroll := false
 	switch message := message.(type) {
 	case executionFinishedMsg:
 		model.results[message.index] = message.result
@@ -84,7 +86,9 @@ func (model readerModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		model.render(false)
 		return model, nil
 	case tea.KeyMsg:
-		switch message.String() {
+		key := message.String()
+		followScroll = !model.showHelp && (key == "up" || key == "down" || key == "j" || key == "k")
+		switch key {
 		case "?":
 			model.showHelp = !model.showHelp
 			return model, nil
@@ -141,7 +145,11 @@ func (model readerModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	var command tea.Cmd
+	offset := model.viewport.YOffset
 	model.viewport, command = model.viewport.Update(message)
+	if followScroll && model.viewport.YOffset != offset {
+		model.focusAtScrollAnchor()
+	}
 	return model, command
 }
 
@@ -206,6 +214,23 @@ func (model *readerModel) focus(delta int) {
 	model.render(true)
 }
 
+func (model *readerModel) focusAtScrollAnchor() {
+	if model.readOnly || len(model.blockRanges) == 0 {
+		return
+	}
+	anchor := model.viewport.YOffset + model.viewport.Height/3
+	for index, block := range model.blockRanges {
+		if anchor < block.start || anchor > block.end || index == model.focused {
+			continue
+		}
+		offset := model.viewport.YOffset
+		model.focused = index
+		model.render(false)
+		model.viewport.SetYOffset(offset)
+		return
+	}
+}
+
 func (model *readerModel) startExecution() tea.Cmd {
 	if len(model.blocks) == 0 || model.running >= 0 {
 		return nil
@@ -215,9 +240,30 @@ func (model *readerModel) startExecution() tea.Cmd {
 	model.running = model.focused
 	index := model.focused
 	block := model.blocks[index]
-	model.render(true)
+	model.render(false)
+	model.scrollBlockIntoView(index)
 	columns := max(20, model.viewport.Width-codeFrameOverhead)
 	return func() tea.Msg { return executeBlock(ctx, index, block, columns, model.workdir) }
+}
+
+func (model *readerModel) scrollBlockIntoView(index int) {
+	if index < 0 || index >= len(model.blockRanges) {
+		return
+	}
+	block := model.blockRanges[index]
+	top := model.viewport.YOffset
+	bottom := top + model.viewport.Height - 1
+	if block.start >= top && block.end <= bottom {
+		return
+	}
+	if block.end-block.start+1 > model.viewport.Height && block.start <= bottom && block.end >= top {
+		return
+	}
+	if block.start < top {
+		model.viewport.SetYOffset(block.start)
+		return
+	}
+	model.viewport.SetYOffset(block.end - model.viewport.Height + 1)
 }
 
 func (model *readerModel) render(scrollToFocus bool) {
@@ -229,6 +275,7 @@ func (model *readerModel) render(scrollToFocus bool) {
 	model.err = nil
 	model.viewport.SetContent(rendered.text)
 	model.blockLines = rendered.blockLines
+	model.blockRanges = rendered.blockRanges
 	if scrollToFocus {
 		model.viewport.SetYOffset(centeredOffset(model.blockLines[model.focused], model.viewport.Height))
 	}

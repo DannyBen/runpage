@@ -1,56 +1,103 @@
-# Build and verify Runpage
+---
+runpage:
+  dependencies: [sh]
+  workdir: self
+---
 
-Runpage keeps prose and commands together in one continuous terminal document.
-The presentation is intentionally quiet so the instructions remain the focus.
+# Runpage showcase
 
-> Opening a document never executes its code automatically.
+Runpage turns an ordinary Markdown document into an interactive command page.
+Prose and executable blocks stay together in one continuous terminal view.
 
-## Install dependencies
+> Opening a page is always safe: commands run only when you select a block and
+> press `Enter`.
 
-Download the Go modules used by the project:
+## Rich Markdown
 
-```bash
-go mod download
-```
+Use familiar Markdown to explain a workflow before asking anyone to run it:
 
-## Run the checks
+- **Bold text** highlights an important result.
+- Inline code such as `runpage --syntax` stays easy to spot.
+- Lists, tables, quotes, and headings provide structure.
 
-The regular project check runs formatting, vetting, and tests.
+1. Read the instructions.
+2. Select a command with `Tab` or `Shift+Tab`.
+3. Execute it with `Enter`.
 
-```bash
-op check
-```
-
-This block is intentionally shown but excluded from execution:
-
-```bash :noop
-git push
-```
-
-Expected stages:
-
-- Format the Go source.
-- Check for suspicious constructs.
-- Run the complete test suite.
-
-The command above will eventually be executable directly from this document.
-For now, `--show` only renders it.
-
-## Configuration example
-
-Non-shell fences are presented as reference material and will not be
-executable:
-
-```yaml
-document: README.md
-mode: read
-```
-
-| Key | Intended action |
+| State | Border |
 | --- | --- |
-| `j` / `k` | Move down or up |
-| `Tab` | Focus the next executable block |
-| `Enter` | Execute the focused block |
-| `q` | Quit |
+| Ready | Cyan |
+| Running | Blue |
+| Success | Green |
+| Failed | Red |
 
-Continue reading after each command and its inline result.
+---
+
+## Executable blocks
+
+### A successful command
+
+Blocks may have short labels. This one prints several lines to standard output:
+
+```sh greeting
+printf '%s\n' \
+  'Hello from Runpage.' \
+  'This command is harmless.' \
+  'It only writes to standard output.'
+```
+
+### A multiline script
+
+The entire fenced block is sent to its interpreter as one script:
+
+```sh tiny report
+for item in prose commands results; do
+  printf '  ✓ %s\n' "$item"
+done
+printf 'Showcase complete.\n'
+```
+
+### An intentional failure
+
+Failures remain in the document with their exit code and standard error. This
+is deliberate and does not change anything on the system:
+
+```sh expected failure
+printf 'Checking an imaginary requirement...\n'
+printf 'Requirement not found (this is the planned demo failure).\n' >&2
+exit 2
+```
+
+### Back to success
+
+Each block has its own result, so execution can continue after a failure:
+
+```sh final check
+printf 'Nothing was installed, deleted, committed, or pushed.\n'
+printf 'Safe to run again.\n'
+```
+
+## Display-only blocks
+
+Non-shell languages are rendered as reference material. The `:noop` directive
+can also make a supported language explicitly display-only.
+
+```yaml configuration
+runpage:
+  dependencies: [sh]
+  workdir: self
+```
+
+```python example :noop
+message = "Shown as Python, never executed"
+print(message)
+```
+
+```ruby example :noop
+puts "Shown as Ruby, never executed"
+```
+
+## Done
+
+Press `?` at any time to see the complete viewer key bindings. Press `q` to
+leave the page.

@@ -25,8 +25,14 @@ const (
 )
 
 type renderedDocument struct {
-	text       string
-	blockLines []int
+	text        string
+	blockLines  []int
+	blockRanges []lineRange
+}
+
+type lineRange struct {
+	start int
+	end   int
 }
 
 type headingContext struct {
@@ -37,20 +43,21 @@ type headingContext struct {
 }
 
 type terminalRenderer struct {
-	source     []byte
-	width      int
-	color      bool
-	focused    int
-	running    int
-	cancelling int
-	results    map[int]executionResult
-	lines      []string
-	blockLines []int
-	executable int
-	headings   [6]headingContext
-	emitted    [6]headingContext
-	headingID  int
-	compact    bool
+	source      []byte
+	width       int
+	color       bool
+	focused     int
+	running     int
+	cancelling  int
+	results     map[int]executionResult
+	lines       []string
+	blockLines  []int
+	blockRanges []lineRange
+	executable  int
+	headings    [6]headingContext
+	emitted     [6]headingContext
+	headingID   int
+	compact     bool
 }
 
 func renderMarkdown(source []byte, width int, color bool, focused, running int, results map[int]executionResult) renderedDocument {
@@ -68,7 +75,7 @@ func renderReaderMarkdown(source []byte, width int, color bool, focused, running
 	for node := document.FirstChild(); node != nil; node = node.NextSibling() {
 		renderer.renderBlock(node, "")
 	}
-	return renderedDocument{text: strings.Join(renderer.lines, "\n"), blockLines: renderer.blockLines}
+	return renderedDocument{text: strings.Join(renderer.lines, "\n"), blockLines: renderer.blockLines, blockRanges: renderer.blockRanges}
 }
 
 func (r *terminalRenderer) renderBlock(node ast.Node, prefix string) {
@@ -215,8 +222,9 @@ func (r *terminalRenderer) renderPlainCode(code, prefix string) {
 
 func (r *terminalRenderer) renderCodeFrame(index int, prefix, label, language, code, status, style string, result executionResult) {
 	frameWidth := max(20, r.width-width(prefix)-(codeFrameOverhead-2))
+	start := len(r.lines)
 	if index >= 0 {
-		r.blockLines = append(r.blockLines, len(r.lines))
+		r.blockLines = append(r.blockLines, start)
 	}
 	r.frameLine(index, prefix, r.borderLine("┌─", label, language, frameWidth, style, true, false))
 	for _, sourceLine := range strings.Split(code, "\n") {
@@ -241,6 +249,9 @@ func (r *terminalRenderer) renderCodeFrame(index int, prefix, label, language, c
 		}
 	}
 	r.frameLine(index, prefix, r.borderLine("└─", "", status, frameWidth, style, false, true))
+	if index >= 0 {
+		r.blockRanges = append(r.blockRanges, lineRange{start: start, end: len(r.lines) - 1})
+	}
 	r.blank()
 }
 

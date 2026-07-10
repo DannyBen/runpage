@@ -159,13 +159,12 @@ Front matter is configuration only and is not included in rendered output.
 
 ## Examples
 
-The [examples](examples/) folder contains documents for static rendering,
-interactive execution, compact mode, and execution results.
+The [showcase](examples/showcase.md) is a safe, self-contained demonstration of
+rich Markdown, executable blocks, captured output, intentional failure, and
+display-only language examples.
 
 ```bash
 runpage examples/showcase.md
-runpage examples/execution-demo.md --compact
-runpage examples/release-checklist.md --read
 ```
 
 ## Development

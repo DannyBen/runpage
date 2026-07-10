@@ -38,6 +38,109 @@ func TestReaderMovesBetweenExecutableBlocks(t *testing.T) {
 	}
 }
 
+func TestReaderLineScrollingMovesFocusAtOneThirdAnchor(t *testing.T) {
+	markdown := []byte(strings.Join([]string{
+		"# Guide",
+		"",
+		"```sh",
+		"printf first",
+		"printf second",
+		"```",
+		"",
+		"Some explanation between the commands.",
+		"",
+		"More explanation between the commands.",
+		"",
+		"```sh",
+		"printf next",
+		"```",
+		"",
+		"Enough trailing prose to keep scrolling possible.",
+		"",
+		"One more trailing paragraph.",
+	}, "\n"))
+
+	for _, key := range []tea.KeyMsg{
+		{Type: tea.KeyDown},
+		{Type: tea.KeyRunes, Runes: []rune{'j'}},
+	} {
+		t.Run(key.String(), func(t *testing.T) {
+			var output bytes.Buffer
+			model := newReaderModel(markdown, &output, 80, 8)
+			if len(model.blockRanges) != 2 {
+				t.Fatalf("block ranges = %#v", model.blockRanges)
+			}
+			anchorRow := model.viewport.Height / 3
+			startOffset := model.blockRanges[1].start - anchorRow - 1
+			model.viewport.SetYOffset(startOffset)
+
+			updated, _ := model.Update(key)
+			model = updated.(readerModel)
+
+			if model.focused != 1 {
+				t.Fatalf("focused = %d, want 1 at anchor line %d", model.focused, model.viewport.YOffset+anchorRow)
+			}
+			if model.viewport.YOffset != startOffset+1 {
+				t.Fatalf("scroll offset = %d, want %d; focus change recentered the viewport", model.viewport.YOffset, startOffset+1)
+			}
+		})
+	}
+}
+
+func TestReaderUpwardScrollingMovesFocusWhenBlockCrossesAnchor(t *testing.T) {
+	markdown := []byte(strings.Join([]string{
+		"# Guide",
+		"",
+		"```sh",
+		"printf first",
+		"printf second",
+		"```",
+		"",
+		"Paragraph one.",
+		"",
+		"Paragraph two.",
+		"",
+		"```sh",
+		"printf next",
+		"```",
+		"",
+		"Trailing paragraph.",
+	}, "\n"))
+	var output bytes.Buffer
+	model := newReaderModel(markdown, &output, 80, 8)
+	model.focused = 1
+	model.render(false)
+	anchorRow := model.viewport.Height / 3
+	startOffset := model.blockRanges[0].end - anchorRow + 1
+	model.viewport.SetYOffset(startOffset)
+
+	updated, _ := model.Update(tea.KeyMsg{Type: tea.KeyUp})
+	model = updated.(readerModel)
+
+	if model.focused != 0 {
+		t.Fatalf("focused = %d, want 0 at anchor line %d", model.focused, model.viewport.YOffset+anchorRow)
+	}
+	if model.viewport.YOffset != startOffset-1 {
+		t.Fatalf("scroll offset = %d, want %d; focus change recentered the viewport", model.viewport.YOffset, startOffset-1)
+	}
+}
+
+func TestReaderScrollKeyWithoutMovementKeepsFocus(t *testing.T) {
+	markdown := []byte("```sh\nprintf first\nprintf second\n```\n\n```sh\nprintf next\n```\n")
+	var output bytes.Buffer
+	model := newReaderModel(markdown, &output, 80, 6)
+	model.focused = 1
+	model.render(false)
+	model.viewport.GotoTop()
+
+	updated, _ := model.Update(tea.KeyMsg{Type: tea.KeyUp})
+	model = updated.(readerModel)
+
+	if model.viewport.YOffset != 0 || model.focused != 1 {
+		t.Fatalf("top-boundary scroll = offset:%d focused:%d, want offset:0 focused:1", model.viewport.YOffset, model.focused)
+	}
+}
+
 func TestReadOnlyReaderDoesNotSelectOrExecuteBlocks(t *testing.T) {
 	markdown := []byte("# Guide\n\n```bash\nprintf should-not-run\n```\n")
 	var output bytes.Buffer
@@ -175,6 +278,86 @@ func TestCenteredOffset(t *testing.T) {
 				t.Fatalf("centeredOffset(%d, %d) = %d, want %d", test.line, test.height, actual, test.expected)
 			}
 		})
+	}
+}
+
+func TestStartingExecutionOnlyScrollsBlockIntoView(t *testing.T) {
+	markdown := []byte(strings.Join([]string{
+		"# Guide",
+		"",
+		"Intro one.",
+		"",
+		"Intro two.",
+		"",
+		"Intro three.",
+		"",
+		"```sh",
+		"printf first",
+		"printf second",
+		"```",
+		"",
+		"Trailing one.",
+		"",
+		"Trailing two.",
+		"",
+		"Trailing three.",
+	}, "\n"))
+
+	tests := []struct {
+		name       string
+		startAt    func(lineRange, int) int
+		expectedAt func(lineRange, int) int
+	}{
+		{
+			name:       "fully visible",
+			startAt:    func(block lineRange, _ int) int { return block.start - 1 },
+			expectedAt: func(block lineRange, _ int) int { return block.start - 1 },
+		},
+		{
+			name:       "hidden above",
+			startAt:    func(block lineRange, _ int) int { return block.start + 1 },
+			expectedAt: func(block lineRange, _ int) int { return block.start },
+		},
+		{
+			name:       "hidden below",
+			startAt:    func(block lineRange, height int) int { return block.end - height },
+			expectedAt: func(block lineRange, height int) int { return block.end - height + 1 },
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var output bytes.Buffer
+			model := newReaderModel(markdown, &output, 80, 8)
+			block := model.blockRanges[0]
+			model.viewport.SetYOffset(test.startAt(block, model.viewport.Height))
+
+			if command := model.startExecution(); command == nil {
+				t.Fatal("startExecution returned no command")
+			}
+			defer model.cancel()
+
+			if got, want := model.viewport.YOffset, test.expectedAt(block, model.viewport.Height); got != want {
+				t.Fatalf("scroll offset = %d, want %d", got, want)
+			}
+		})
+	}
+}
+
+func TestStartingOversizedVisibleBlockKeepsScrollPosition(t *testing.T) {
+	markdown := []byte("# Guide\n\n```sh\nline1\nline2\nline3\nline4\nline5\nline6\nline7\nline8\n```\n\nTrailing prose.\n")
+	var output bytes.Buffer
+	model := newReaderModel(markdown, &output, 80, 6)
+	startOffset := model.blockRanges[0].start + 2
+	model.viewport.SetYOffset(startOffset)
+
+	if command := model.startExecution(); command == nil {
+		t.Fatal("startExecution returned no command")
+	}
+	defer model.cancel()
+
+	if model.viewport.YOffset != startOffset {
+		t.Fatalf("oversized visible block moved from offset %d to %d", startOffset, model.viewport.YOffset)
 	}
 }
 
