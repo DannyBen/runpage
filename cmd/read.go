@@ -12,6 +12,8 @@ import (
 	"golang.org/x/term"
 )
 
+const viewportBottomMargin = 4
+
 type readerModel struct {
 	markdown    []byte
 	blocks      []executableBlock
@@ -273,7 +275,7 @@ func (model *readerModel) render(scrollToFocus bool) {
 	}
 	rendered := renderReaderMarkdownMode(model.markdown, model.viewport.Width, colorOutput(model.output), model.focused, model.running, model.results, model.compact > 0, model.compact > 1, cancelling)
 	model.err = nil
-	model.viewport.SetContent(rendered.text)
+	model.viewport.SetContent(rendered.text + strings.Repeat("\n", viewportBottomMargin))
 	model.blockLines = rendered.blockLines
 	model.blockRanges = rendered.blockRanges
 	if scrollToFocus {

@@ -394,6 +394,18 @@ func TestReaderExecutesSuccessAndFailure(t *testing.T) {
 	}
 }
 
+func TestReaderAddsVirtualBottomMargin(t *testing.T) {
+	markdown := []byte("## Final check\n\n```bash\nop check\n```\n")
+	var output bytes.Buffer
+	rendered := renderReaderMarkdown(markdown, 80, false, 0, -1, nil, false, -1)
+	model := newReaderModel(markdown, &output, 80, 10)
+
+	want := strings.Count(rendered.text, "\n") + 1 + viewportBottomMargin
+	if got := model.viewport.TotalLineCount(); got != want {
+		t.Fatalf("viewport lines = %d, want %d", got, want)
+	}
+}
+
 func TestReaderCancelsBeforeQuitting(t *testing.T) {
 	for _, key := range []tea.KeyMsg{
 		{Type: tea.KeyRunes, Runes: []rune{'q'}},
