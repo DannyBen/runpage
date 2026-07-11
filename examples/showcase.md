@@ -79,7 +79,7 @@ printf 'Safe to run again.\n'
 
 ## Display-only blocks
 
-Non-shell languages are rendered as reference material. The `:noop` directive
+Non-shell languages are rendered as reference material. The reserved `:noop` tag
 can also make a supported language explicitly display-only.
 
 ```yaml configuration

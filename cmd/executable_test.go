@@ -113,20 +113,21 @@ func TestFenceMetadata(t *testing.T) {
 		info       string
 		language   string
 		label      string
+		tags       []string
 		executable bool
 	}{
 		{info: "bash", language: "bash", executable: true},
 		{info: "bash check", language: "bash", label: "check", executable: true},
 		{info: "bash verify git state", language: "bash", label: "verify git state", executable: true},
 		{info: "bash example :noop", language: "bash", label: "example", executable: false},
-		{info: "bash perform :future", language: "bash", label: "perform", executable: true},
+		{info: "bash perform :future", language: "bash", label: "perform", tags: []string{"future"}, executable: true},
 		{info: "yaml example", language: "yaml", label: "example", executable: false},
 	}
 	for _, test := range tests {
 		t.Run(test.info, func(t *testing.T) {
-			language, label, executable := fenceMetadata(test.info)
-			if language != test.language || label != test.label || executable != test.executable {
-				t.Fatalf("fenceMetadata(%q) = %q, %q, %v", test.info, language, label, executable)
+			language, label, tags, executable := fenceMetadata(test.info)
+			if language != test.language || label != test.label || strings.Join(tags, ",") != strings.Join(test.tags, ",") || executable != test.executable {
+				t.Fatalf("fenceMetadata(%q) = %q, %q, %v, %v", test.info, language, label, tags, executable)
 			}
 		})
 	}

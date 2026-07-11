@@ -34,9 +34,128 @@ func TestRootHelp(t *testing.T) {
 	assertContains(t, stdout.String(), "--show, -s")
 	assertContains(t, stdout.String(), "--read, -r")
 	assertContains(t, stdout.String(), "--compact, -c")
+	assertContains(t, stdout.String(), "--run TAG")
 	assertContains(t, stdout.String(), "--workdir DIR, -w DIR")
 	assertContains(t, stdout.String(), "--syntax")
 	assertContains(t, stdout.String(), "YAML front matter")
+}
+
+func TestRunExecutesTaggedBlocksInOrder(t *testing.T) {
+	document := filepath.Join(t.TempDir(), "checks.md")
+	markdown := "```sh first :check\nprintf 'first\\n'\n```\n\n```sh skipped :other\nprintf 'skipped\\n'\n```\n\n```sh second :check\nprintf 'second\\n'\n```\n"
+	if err := os.WriteFile(document, []byte(markdown), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tag := range []string{"check", ":check"} {
+		t.Run(tag, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			err := Execute([]string{document, "--run", tag, "--show"}, "1.2.3", &stdout, &stderr)
+			if err != nil {
+				t.Fatalf("Execute returned error: %v", err)
+			}
+			assertContains(t, stdout.String(), "first")
+			assertContains(t, stdout.String(), "second")
+			assertContains(t, stdout.String(), "2 commands: 2 succeeded")
+			if got := strings.Count(stdout.String(), "┌─ first"); got != 1 {
+				t.Fatalf("first frame headers = %d, want 1:\n%s", got, stdout.String())
+			}
+			if stderr.Len() != 0 {
+				t.Fatalf("stderr = %q", stderr.String())
+			}
+		})
+	}
+}
+
+type notifyingWriter struct {
+	buffer *bytes.Buffer
+	notify func() error
+	done   bool
+}
+
+func (writer *notifyingWriter) Write(content []byte) (int, error) {
+	if !writer.done {
+		writer.done = true
+		if err := writer.notify(); err != nil {
+			return 0, err
+		}
+	}
+	return writer.buffer.Write(content)
+}
+
+func TestRunShowWritesPageBeforeExecutingBlock(t *testing.T) {
+	dir := t.TempDir()
+	marker := filepath.Join(dir, "page-started")
+	document := filepath.Join(dir, "checks.md")
+	markdown := "# Slow checks\n\nAbout to run.\n\n```sh waiting :check\ntest -f '" + marker + "'\nprintf 'done\\n'\n```\n"
+	if err := os.WriteFile(document, []byte(markdown), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var buffer, stderr bytes.Buffer
+	stdout := &notifyingWriter{buffer: &buffer, notify: func() error {
+		return os.WriteFile(marker, nil, 0o644)
+	}}
+	err := Execute([]string{document, "--run", "check", "--show"}, "1.2.3", stdout, &stderr)
+	if err != nil {
+		t.Fatalf("Execute returned error: %v", err)
+	}
+	assertContains(t, buffer.String(), "About to run.")
+	assertContains(t, buffer.String(), "done")
+}
+
+func TestRunShowUsesConfiguredWorkdir(t *testing.T) {
+	dir := t.TempDir()
+	document := filepath.Join(dir, "checks.md")
+	markdown := "---\nrunpage:\n  workdir: self\n---\n\n```sh :check\npwd\n```\n"
+	if err := os.WriteFile(document, []byte(markdown), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	err := Execute([]string{document, "--run", "check", "--show"}, "1.2.3", &stdout, &stderr)
+	if err != nil {
+		t.Fatalf("Execute returned error: %v", err)
+	}
+	assertContains(t, stdout.String(), dir)
+}
+
+func TestRunStopsAtFirstFailure(t *testing.T) {
+	document := filepath.Join(t.TempDir(), "checks.md")
+	markdown := "```sh :check\nprintf 'before\\n'\nexit 7\n```\n\n```sh :check\nprintf 'after\\n'\n```\n"
+	if err := os.WriteFile(document, []byte(markdown), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	err := Execute([]string{document, "--run", "check", "--show"}, "1.2.3", &stdout, &stderr)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertContains(t, err.Error(), "exit code 7")
+	assertContains(t, stdout.String(), "before")
+	assertContains(t, stdout.String(), "2 commands: 1 failed, 1 skipped")
+	if strings.Contains(stdout.String(), "after\n") {
+		t.Fatalf("rendered command after failure output:\n%s", stdout.String())
+	}
+}
+
+func TestRunRejectsEmptyAndMissingTags(t *testing.T) {
+	document := filepath.Join(t.TempDir(), "checks.md")
+	if err := os.WriteFile(document, []byte("```sh :check\ntrue\n```\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	err := Execute([]string{document, "--run", ""}, "1.2.3", &stdout, &stderr)
+	if err == nil || !strings.Contains(err.Error(), "non-empty tag") {
+		t.Fatalf("empty tag error = %v", err)
+	}
+
+	err = Execute([]string{document, "--run", "missing", "--show"}, "1.2.3", &stdout, &stderr)
+	if err == nil || !strings.Contains(err.Error(), "no executable code blocks tagged :missing") {
+		t.Fatalf("missing tag error = %v", err)
+	}
 }
 
 func TestSyntaxHelp(t *testing.T) {
@@ -52,7 +171,7 @@ func TestSyntaxHelp(t *testing.T) {
 	}
 	for _, want := range []string{
 		"Runpage document syntax",
-		"```LANG [LABEL...] [:noop]",
+		"```LANG [LABEL...] [:TAG...]",
 		"$KEY or {{ KEY }}",
 		"under the runpage key",
 		"workdir: self",
@@ -297,7 +416,7 @@ func TestModesAreMutuallyExclusive(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	assertContains(t, err.Error(), "if any flags in the group")
+	assertContains(t, err.Error(), "can only be combined with --run")
 }
 
 func assertContains(t *testing.T, haystack, needle string) {

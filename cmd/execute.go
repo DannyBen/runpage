@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -14,6 +15,24 @@ import (
 type executionFinishedMsg struct {
 	index  int
 	result executionResult
+}
+
+type runSummary struct {
+	total     int
+	succeeded int
+	failed    int
+	skipped   int
+}
+
+func taggedBlockIndexes(blocks []executableBlock, tag string) []int {
+	tag = strings.TrimPrefix(tag, ":")
+	indexes := make([]int, 0)
+	for index, block := range blocks {
+		if block.hasTag(tag) {
+			indexes = append(indexes, index)
+		}
+	}
+	return indexes
 }
 
 func executeBlock(ctx context.Context, index int, block executableBlock, columns int, workdir string) executionFinishedMsg {

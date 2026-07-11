@@ -12,13 +12,14 @@ Minimal page:
 
 Fence syntax:
 
-  ```LANG [LABEL...] [:noop]
+  ```LANG [LABEL...] [:TAG...]
   command
   ```
 
 Executable languages are bash, sh, shell, zsh, console, python, py, ruby, and
 rb. Other fenced languages are displayed but not executed. LABEL is optional.
-Add :noop to make an otherwise executable block display-only:
+Tags begin with a colon and are not included in the block label. Add the
+reserved :noop tag to make an otherwise executable block display-only:
 
   ```bash example :noop
   echo "shown, not run"
@@ -61,6 +62,10 @@ Useful commands:
   runpage page.md -cc             Also hide executable source
   runpage page.md --read          Disable selection and execution
   runpage page.md --show          Render to standard output and exit
+  runpage page.md --run check     Open the reader and run blocks tagged :check
+  runpage page.md --run check -c  Run tagged blocks in the compact reader
+  runpage page.md --run check --show
+                                  Run, render results and a summary, then exit
   runpage page.md --workdir DIR   Override the configured workdir
 
 In the interactive reader, press ? for key binding help.

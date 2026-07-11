@@ -7,7 +7,9 @@ import (
 type executableBlock struct {
 	language string
 	line     int
+	endLine  int
 	command  string
+	tags     []string
 }
 
 type executionResult struct {
@@ -26,7 +28,7 @@ func executableBlocks(markdown string) []executableBlock {
 		if !ok {
 			continue
 		}
-		language, _, executable := fenceMetadata(info)
+		language, _, tags, executable := fenceMetadata(info)
 		start := index
 		for index++; index < len(lines); index++ {
 			if closingFence(lines[index], marker) {
@@ -37,7 +39,9 @@ func executableBlocks(markdown string) []executableBlock {
 			blocks = append(blocks, executableBlock{
 				language: language,
 				line:     start,
+				endLine:  index,
 				command:  strings.Join(lines[start+1:index], "\n"),
+				tags:     tags,
 			})
 		}
 	}
@@ -77,10 +81,10 @@ func closingFence(line, marker string) bool {
 	return len(trimmed) >= len(marker)
 }
 
-func fenceMetadata(info string) (language, label string, executable bool) {
+func fenceMetadata(info string) (language, label string, tags []string, executable bool) {
 	fields := strings.Fields(info)
 	if len(fields) == 0 {
-		return "", "", false
+		return "", "", nil, false
 	}
 	language = strings.ToLower(fields[0])
 	noop := false
@@ -91,6 +95,7 @@ func fenceMetadata(info string) (language, label string, executable bool) {
 			continue
 		}
 		if strings.HasPrefix(field, ":") {
+			tags = append(tags, strings.TrimPrefix(field, ":"))
 			continue
 		}
 		labels = append(labels, field)
@@ -98,8 +103,17 @@ func fenceMetadata(info string) (language, label string, executable bool) {
 	label = strings.Join(labels, " ")
 	switch language {
 	case "bash", "sh", "shell", "zsh", "console", "python", "py", "ruby", "rb":
-		return language, label, !noop
+		return language, label, tags, !noop
 	default:
-		return language, label, false
+		return language, label, tags, false
 	}
+}
+
+func (block executableBlock) hasTag(tag string) bool {
+	for _, candidate := range block.tags {
+		if candidate == tag {
+			return true
+		}
+	}
+	return false
 }

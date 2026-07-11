@@ -20,6 +20,7 @@ type options struct {
 	compact int
 	syntax  bool
 	workdir string
+	runTag  string
 }
 
 func Execute(args []string, version string, stdout, stderr io.Writer) error {
@@ -50,6 +51,13 @@ func NewRootCommand(version string, stdout, stderr io.Writer) *cobra.Command {
 		SilenceErrors: true,
 		Args:          cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			runRequested := cmd.Flags().Changed("run")
+			if runRequested && strings.TrimPrefix(opts.runTag, ":") == "" {
+				return fmt.Errorf("--run requires a non-empty tag")
+			}
+			if err := validateModes(opts, runRequested); err != nil {
+				return err
+			}
 			if opts.syntax {
 				if len(args) > 0 {
 					return fmt.Errorf("--syntax does not accept arguments")
@@ -81,7 +89,8 @@ func NewRootCommand(version string, stdout, stderr io.Writer) *cobra.Command {
 			}
 
 			workdir := ""
-			if !opts.read && !opts.show {
+			executionEnabled := !opts.read && (!opts.show || runRequested)
+			if executionEnabled {
 				if err := requireDependencies(loaded.config); err != nil {
 					return err
 				}
@@ -92,8 +101,12 @@ func NewRootCommand(version string, stdout, stderr io.Writer) *cobra.Command {
 			}
 
 			switch {
+			case opts.show && runRequested:
+				return showRunDocument(loaded.markdown, opts.runTag, stdout, opts.compact, workdir)
 			case opts.show:
 				return showDocument(loaded.markdown, stdout)
+			case runRequested:
+				return readRunDocument(loaded.markdown, cmd.InOrStdin(), stdout, opts.compact, workdir, opts.runTag)
 			default:
 				return readDocument(loaded.markdown, cmd.InOrStdin(), stdout, opts.read, opts.compact, workdir)
 			}
@@ -111,9 +124,22 @@ func NewRootCommand(version string, stdout, stderr io.Writer) *cobra.Command {
 	root.Flags().CountVarP(&opts.compact, "compact", "c", "hide prose; repeat to also hide executable code")
 	root.Flags().BoolVar(&opts.syntax, "syntax", false, "show the Runpage document syntax")
 	root.Flags().StringVarP(&opts.workdir, "workdir", "w", "", "directory used to execute code blocks")
-	root.MarkFlagsMutuallyExclusive("show", "read", "compact", "syntax")
+	root.Flags().StringVar(&opts.runTag, "run", "", "run executable code blocks with tag")
 
 	return root
+}
+
+func validateModes(opts options, runRequested bool) error {
+	if opts.syntax && (opts.show || opts.read || opts.compact > 0 || runRequested) {
+		return fmt.Errorf("--syntax cannot be combined with another mode")
+	}
+	if opts.read && (opts.show || opts.compact > 0 || runRequested) {
+		return fmt.Errorf("--read cannot be combined with --show, --compact, or --run")
+	}
+	if opts.show && opts.compact > 0 && !runRequested {
+		return fmt.Errorf("--show and --compact can only be combined with --run")
+	}
+	return nil
 }
 
 func resolveWorkdir(path string) (string, error) {

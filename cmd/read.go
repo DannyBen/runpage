@@ -31,7 +31,11 @@ type readerModel struct {
 	cancelling  bool
 	showHelp    bool
 	err         error
+	runQueue    []int
+	autoRun     bool
 }
+
+type startAutoRunMsg struct{}
 
 func readDocument(markdown []byte, input io.Reader, output io.Writer, readOnly bool, compact int, workdir string) error {
 	if !terminalOutput(output) {
@@ -46,6 +50,26 @@ func readDocument(markdown []byte, input io.Reader, output io.Writer, readOnly b
 	}
 	if result, ok := final.(readerModel); ok && result.err != nil {
 		return result.err
+	}
+	return nil
+}
+
+func readRunDocument(markdown []byte, input io.Reader, output io.Writer, compact int, workdir, tag string) error {
+	if !terminalOutput(output) {
+		return fmt.Errorf("interactive reader requires a terminal (use --run TAG --show for redirected output)")
+	}
+
+	model := newReaderModelWithMode(markdown, output, renderWidth(output), 24, false, compact, workdir)
+	model.runQueue = taggedBlockIndexes(model.blocks, tag)
+	if len(model.runQueue) == 0 {
+		return fmt.Errorf("no executable code blocks tagged :%s", strings.TrimPrefix(tag, ":"))
+	}
+	model.autoRun = true
+	model.focused = model.runQueue[0]
+	model.render(true)
+	program := tea.NewProgram(model, tea.WithInput(input), tea.WithOutput(output), tea.WithAltScreen())
+	if _, err := program.Run(); err != nil {
+		return fmt.Errorf("run interactive reader: %w", err)
 	}
 	return nil
 }
@@ -75,17 +99,29 @@ func newReaderModelWithMode(markdown []byte, output io.Writer, width, height int
 	return model
 }
 
-func (model readerModel) Init() tea.Cmd { return nil }
+func (model readerModel) Init() tea.Cmd {
+	if model.autoRun {
+		return func() tea.Msg { return startAutoRunMsg{} }
+	}
+	return nil
+}
 
 func (model readerModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	followScroll := false
 	switch message := message.(type) {
+	case startAutoRunMsg:
+		return model, model.startQueuedExecution()
 	case executionFinishedMsg:
 		model.results[message.index] = message.result
 		model.running = -1
 		model.cancel = nil
 		model.cancelling = false
 		model.render(false)
+		if model.autoRun && message.result.exitCode == 0 && !message.result.cancelled {
+			return model, model.startQueuedExecution()
+		}
+		model.autoRun = false
+		model.runQueue = nil
 		return model, nil
 	case tea.KeyMsg:
 		key := message.String()
@@ -246,6 +282,16 @@ func (model *readerModel) startExecution() tea.Cmd {
 	model.scrollBlockIntoView(index)
 	columns := max(20, model.viewport.Width-codeFrameOverhead)
 	return func() tea.Msg { return executeBlock(ctx, index, block, columns, model.workdir) }
+}
+
+func (model *readerModel) startQueuedExecution() tea.Cmd {
+	if len(model.runQueue) == 0 {
+		model.autoRun = false
+		return nil
+	}
+	model.focused = model.runQueue[0]
+	model.runQueue = model.runQueue[1:]
+	return model.startExecution()
 }
 
 func (model *readerModel) scrollBlockIntoView(index int) {

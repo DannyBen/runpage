@@ -30,6 +30,12 @@ Options:
     Open an execution-focused interactive reader showing relevant headings and
     executable code blocks. Repeat (-cc) to hide executable source.
 
+  --run TAG
+    Open the interactive reader and run executable code blocks tagged :TAG in
+    document order, stopping at the first failure. The leading colon is
+    optional. Combine with --compact or -cc to change the interactive view, or
+    with --show to render the completed page and a command summary, then exit.
+
   --workdir DIR, -w DIR
     Run executable code blocks from DIR. Relative paths are resolved from the
     directory where Runpage was started. Use self or self/... for paths
