@@ -107,7 +107,8 @@ func TestRunShowWritesPageBeforeExecutingBlock(t *testing.T) {
 func TestRunShowUsesConfiguredWorkdir(t *testing.T) {
 	dir := t.TempDir()
 	document := filepath.Join(dir, "checks.md")
-	markdown := "---\nrunpage:\n  workdir: self\n---\n\n```sh :check\npwd\n```\n"
+	marker := filepath.Join(dir, "workdir-marker")
+	markdown := "---\nrunpage:\n  workdir: self\n---\n\n```sh :check\ntouch workdir-marker\n```\n"
 	if err := os.WriteFile(document, []byte(markdown), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +118,9 @@ func TestRunShowUsesConfiguredWorkdir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Execute returned error: %v", err)
 	}
-	assertContains(t, stdout.String(), dir)
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("configured workdir marker: %v", err)
+	}
 }
 
 func TestRunStopsAtFirstFailure(t *testing.T) {
