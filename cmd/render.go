@@ -58,6 +58,7 @@ type terminalRenderer struct {
 	emitted     [6]headingContext
 	headingID   int
 	compact     bool
+	collapsed   bool
 }
 
 func renderMarkdown(source []byte, width int, color bool, focused, running int, results map[int]executionResult) renderedDocument {
@@ -69,9 +70,13 @@ func renderMarkdownMode(source []byte, width int, color bool, focused, running i
 }
 
 func renderReaderMarkdown(source []byte, width int, color bool, focused, running int, results map[int]executionResult, compact bool, cancelling int) renderedDocument {
+	return renderReaderMarkdownMode(source, width, color, focused, running, results, compact, false, cancelling)
+}
+
+func renderReaderMarkdownMode(source []byte, width int, color bool, focused, running int, results map[int]executionResult, compact, collapsed bool, cancelling int) renderedDocument {
 	markdown := goldmark.New(goldmark.WithExtensions(extension.GFM))
 	document := markdown.Parser().Parse(textm.NewReader(source))
-	renderer := &terminalRenderer{source: source, width: max(20, width), color: color, focused: focused, running: running, cancelling: cancelling, results: results, compact: compact}
+	renderer := &terminalRenderer{source: source, width: max(20, width), color: color, focused: focused, running: running, cancelling: cancelling, results: results, compact: compact, collapsed: collapsed}
 	for node := document.FirstChild(); node != nil; node = node.NextSibling() {
 		renderer.renderBlock(node, "")
 	}
@@ -175,7 +180,20 @@ func (r *terminalRenderer) renderFence(node *ast.FencedCodeBlock, prefix string)
 			status = "executable"
 		}
 	}
+	if r.collapsed && !executed {
+		r.renderCollapsedFrame(index, prefix, label, status, style)
+		return
+	}
 	r.renderCodeFrame(index, prefix, label, language, code, status, style, result)
+}
+
+func (r *terminalRenderer) renderCollapsedFrame(index int, prefix, label, status, style string) {
+	frameWidth := max(20, r.width-width(prefix)-(codeFrameOverhead-2))
+	start := len(r.lines)
+	r.blockLines = append(r.blockLines, start)
+	r.frameLine(index, prefix, r.borderLine("──", label, status, frameWidth, style, true, true))
+	r.blockRanges = append(r.blockRanges, lineRange{start: start, end: start})
+	r.blank()
 }
 
 func (r *terminalRenderer) renderHeading(heading headingContext) {
@@ -227,9 +245,11 @@ func (r *terminalRenderer) renderCodeFrame(index int, prefix, label, language, c
 		r.blockLines = append(r.blockLines, start)
 	}
 	r.frameLine(index, prefix, r.borderLine("┌─", label, language, frameWidth, style, true, false))
-	for _, sourceLine := range strings.Split(code, "\n") {
-		for _, line := range wrapPreserved(sourceLine, frameWidth-2) {
-			r.frameLine(index, prefix, r.paint("│ ", style)+line)
+	if !r.collapsed {
+		for _, sourceLine := range strings.Split(code, "\n") {
+			for _, line := range wrapPreserved(sourceLine, frameWidth-2) {
+				r.frameLine(index, prefix, r.paint("│ ", style)+line)
+			}
 		}
 	}
 	if result.stdout != "" {

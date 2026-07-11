@@ -233,6 +233,40 @@ func TestRenderMarkdownFenceLabelAndCompactHeading(t *testing.T) {
 	}
 }
 
+func TestRenderMarkdownCollapsedAlwaysHidesSource(t *testing.T) {
+	markdown := []byte("## Verify\n\n```bash check\nprintf output\n```\n")
+	unexecuted := renderReaderMarkdownMode(markdown, 80, false, 0, -1, nil, true, true, -1)
+
+	if !strings.Contains(unexecuted.text, "── check ") || !strings.Contains(unexecuted.text, " ready to execute ") {
+		t.Fatalf("collapsed status line missing:\n%s", unexecuted.text)
+	}
+	for _, unwanted := range []string{"┌", "└", "printf output"} {
+		if strings.Contains(unexecuted.text, unwanted) {
+			t.Fatalf("collapsed unexecuted block contains %q:\n%s", unwanted, unexecuted.text)
+		}
+	}
+
+	results := map[int]executionResult{0: {stdout: "output\n"}}
+	executed := renderReaderMarkdownMode(markdown, 80, false, 0, -1, results, true, true, -1)
+	for _, want := range []string{"┌─ check ", "stdout", "output", "success", "└─"} {
+		if !strings.Contains(executed.text, want) {
+			t.Fatalf("executed block missing %q:\n%s", want, executed.text)
+		}
+	}
+	if strings.Contains(executed.text, "printf output") {
+		t.Fatalf("executed collapsed block exposes source:\n%s", executed.text)
+	}
+}
+
+func TestRenderMarkdownCollapsedLeavesUnlabelledStatusLineUnlabelled(t *testing.T) {
+	markdown := []byte("## Verify\n\n```bash\nop check\n```\n")
+	rendered := renderReaderMarkdownMode(markdown, 80, false, 0, -1, nil, true, true, -1).text
+
+	if strings.Contains(rendered, "command") || strings.Contains(rendered, "step") || strings.Contains(rendered, "op check") {
+		t.Fatalf("unlabelled collapsed block gained a label or source:\n%s", rendered)
+	}
+}
+
 func TestRenderMarkdownDoesNotInferFenceLabel(t *testing.T) {
 	markdown := []byte("## Descriptive heading\n\n```bash\nop check\n```\n")
 	rendered := renderMarkdown(markdown, 80, false, 0, -1, nil)

@@ -144,7 +144,7 @@ func TestReaderScrollKeyWithoutMovementKeepsFocus(t *testing.T) {
 func TestReadOnlyReaderDoesNotSelectOrExecuteBlocks(t *testing.T) {
 	markdown := []byte("# Guide\n\n```bash\nprintf should-not-run\n```\n")
 	var output bytes.Buffer
-	model := newReaderModelWithMode(markdown, &output, 80, 20, true, false, "")
+	model := newReaderModelWithMode(markdown, &output, 80, 20, true, 0, "")
 
 	if model.focused != -1 {
 		t.Fatalf("focused = %d, want -1", model.focused)
@@ -234,7 +234,7 @@ func TestReaderTogglesKeyBindingHelp(t *testing.T) {
 
 func TestReadOnlyKeyBindingHelpOmitsExecutionControls(t *testing.T) {
 	var output bytes.Buffer
-	model := newReaderModelWithMode([]byte("# Guide\n"), &output, 80, 20, true, false, "")
+	model := newReaderModelWithMode([]byte("# Guide\n"), &output, 80, 20, true, 0, "")
 	model.showHelp = true
 
 	if strings.Contains(model.View(), "Select next") || strings.Contains(model.View(), "Execute selected") {

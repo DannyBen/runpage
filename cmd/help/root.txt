@@ -28,7 +28,7 @@ Options:
 
   --compact, -c
     Open an execution-focused interactive reader showing relevant headings and
-    executable code blocks.
+    executable code blocks. Repeat (-cc) to hide executable source.
 
   --workdir DIR, -w DIR
     Run executable code blocks from DIR. Relative paths are resolved from the

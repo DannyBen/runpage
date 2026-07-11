@@ -24,14 +24,14 @@ type readerModel struct {
 	blockLines  []int
 	blockRanges []lineRange
 	readOnly    bool
-	compact     bool
+	compact     int
 	workdir     string
 	cancelling  bool
 	showHelp    bool
 	err         error
 }
 
-func readDocument(markdown []byte, input io.Reader, output io.Writer, readOnly, compact bool, workdir string) error {
+func readDocument(markdown []byte, input io.Reader, output io.Writer, readOnly bool, compact int, workdir string) error {
 	if !terminalOutput(output) {
 		return fmt.Errorf("interactive reader requires a terminal (use --show for redirected output)")
 	}
@@ -49,10 +49,10 @@ func readDocument(markdown []byte, input io.Reader, output io.Writer, readOnly, 
 }
 
 func newReaderModel(markdown []byte, output io.Writer, width, height int) readerModel {
-	return newReaderModelWithMode(markdown, output, width, height, false, false, "")
+	return newReaderModelWithMode(markdown, output, width, height, false, 0, "")
 }
 
-func newReaderModelWithMode(markdown []byte, output io.Writer, width, height int, readOnly, compact bool, workdir string) readerModel {
+func newReaderModelWithMode(markdown []byte, output io.Writer, width, height int, readOnly bool, compact int, workdir string) readerModel {
 	focused := 0
 	if readOnly {
 		focused = -1
@@ -174,7 +174,7 @@ func (model readerModel) View() string {
 	if model.cancelling {
 		status = "cancelling  •  q/Esc again to quit"
 	}
-	if model.compact {
+	if model.compact > 0 {
 		status = "compact  •  " + status
 	}
 	return model.viewport.View() + "\n" + status
@@ -271,7 +271,7 @@ func (model *readerModel) render(scrollToFocus bool) {
 	if model.cancelling {
 		cancelling = model.running
 	}
-	rendered := renderReaderMarkdown(model.markdown, model.viewport.Width, colorOutput(model.output), model.focused, model.running, model.results, model.compact, cancelling)
+	rendered := renderReaderMarkdownMode(model.markdown, model.viewport.Width, colorOutput(model.output), model.focused, model.running, model.results, model.compact > 0, model.compact > 1, cancelling)
 	model.err = nil
 	model.viewport.SetContent(rendered.text)
 	model.blockLines = rendered.blockLines

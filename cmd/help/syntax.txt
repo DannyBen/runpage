@@ -58,6 +58,7 @@ Useful commands:
 
   runpage page.md                 Open the interactive reader
   runpage page.md --compact       Show headings and executable blocks only
+  runpage page.md -cc             Also hide executable source
   runpage page.md --read          Disable selection and execution
   runpage page.md --show          Render to standard output and exit
   runpage page.md --workdir DIR   Override the configured workdir

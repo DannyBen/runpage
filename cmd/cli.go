@@ -17,7 +17,7 @@ var helpFiles embed.FS
 type options struct {
 	show    bool
 	read    bool
-	compact bool
+	compact int
 	syntax  bool
 	workdir string
 }
@@ -108,7 +108,7 @@ func NewRootCommand(version string, stdout, stderr io.Writer) *cobra.Command {
 
 	root.Flags().BoolVarP(&opts.show, "show", "s", false, "render the document and exit")
 	root.Flags().BoolVarP(&opts.read, "read", "r", false, "open the interactive reader without execution")
-	root.Flags().BoolVarP(&opts.compact, "compact", "c", false, "show only executable blocks in the interactive reader")
+	root.Flags().CountVarP(&opts.compact, "compact", "c", "hide prose; repeat to also hide executable code")
 	root.Flags().BoolVar(&opts.syntax, "syntax", false, "show the Runpage document syntax")
 	root.Flags().StringVarP(&opts.workdir, "workdir", "w", "", "directory used to execute code blocks")
 	root.MarkFlagsMutuallyExclusive("show", "read", "compact", "syntax")

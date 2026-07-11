@@ -50,6 +50,7 @@ Choose a focused mode when needed:
 ```bash
 runpage release.md --read
 runpage release.md --compact
+runpage release.md -cc
 runpage release.md --show
 runpage release.md --workdir path/to/project
 ```
@@ -59,6 +60,7 @@ runpage release.md --workdir path/to/project
 | default | Read the full document and execute selected blocks |
 | `--read`, `-r` | Read the full document without execution |
 | `--compact`, `-c` | Show relevant headings and executable blocks |
+| `-cc` | Also hide executable source |
 | `--show`, `-s` | Render the complete document and exit |
 
 Use `--workdir DIR` (`-w DIR`) to run every executable block from a specific
