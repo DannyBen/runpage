@@ -61,6 +61,7 @@ runpage release.md --workdir path/to/project
 | `--read`, `-r` | Read the full document without execution |
 | `--compact`, `-c` | Show relevant headings and executable blocks |
 | `-cc` | Also hide executable source |
+| `--run TAG` | Open the viewer and run blocks tagged `:TAG` in order |
 | `--show`, `-s` | Render the complete document and exit |
 
 Use `--workdir DIR` (`-w DIR`) to run every executable block from a specific
@@ -79,6 +80,14 @@ launch-relative directory named `self`.
 
 Add `:noop` to a fence info string to keep that block display-only.
 
+Use `--run TAG` to open the interactive viewer and execute every block carrying
+that tag in document order. The leading colon is optional on the command line,
+so `--run check` and `--run :check` both select blocks tagged `:check`.
+Execution stops at the first failure and leaves the viewer open at that block.
+Combine it with `--compact` or `-cc` to use those views. Add `--show` to run
+non-interactively, render the completed page and a compact command summary, and
+exit. A `:noop` block is always display-only, even when it has a matching tag.
+
 Code frames are untitled by default. Add a short label after the fence language
 when a frame needs its own title:
 
@@ -88,8 +97,8 @@ test "$(git branch --show-current)" = master
 ```
 ````
 
-Multiple plain words form one label. Tokens beginning with `:` are Runpage
-directives and are not included in the title, so labels compose with `:noop`:
+Multiple plain words form one label. Tokens beginning with `:` are Runpage tags
+and are not included in the title, so labels compose with `:noop`:
 
 ````markdown
 ```bash example :noop

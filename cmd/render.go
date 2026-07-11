@@ -145,7 +145,7 @@ func (r *terminalRenderer) renderFence(node *ast.FencedCodeBlock, prefix string)
 	if node.Info != nil {
 		info = string(node.Info.Text(r.source))
 	}
-	language, label, executable := fenceMetadata(info)
+	language, label, _, executable := fenceMetadata(info)
 	code := strings.TrimSuffix(string(node.Lines().Value(r.source)), "\n")
 	if !executable {
 		if r.compact {

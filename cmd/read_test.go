@@ -394,6 +394,33 @@ func TestReaderExecutesSuccessAndFailure(t *testing.T) {
 	}
 }
 
+func TestReaderAutomaticallyRunsTaggedBlocksAndStopsOnFailure(t *testing.T) {
+	markdown := []byte("```sh first :check\nprintf first\n```\n\n```sh other :other\nprintf other\n```\n\n```sh failing :check\nexit 4\n```\n\n```sh last :check\nprintf last\n```\n")
+	var output bytes.Buffer
+	model := newReaderModel(markdown, &output, 80, 30)
+	model.runQueue = taggedBlockIndexes(model.blocks, "check")
+	model.autoRun = true
+
+	updated, command := model.Update(model.Init()())
+	model = updated.(readerModel)
+	if model.running != 0 {
+		t.Fatalf("running = %d, want 0", model.running)
+	}
+	updated, command = model.Update(command())
+	model = updated.(readerModel)
+	if model.running != 2 {
+		t.Fatalf("running after success = %d, want 2", model.running)
+	}
+	updated, command = model.Update(command())
+	model = updated.(readerModel)
+	if command != nil || model.autoRun || model.running != -1 {
+		t.Fatalf("queue continued after failure: auto=%v running=%d command=%v", model.autoRun, model.running, command)
+	}
+	if model.focused != 2 || len(model.results) != 2 {
+		t.Fatalf("focused = %d, results = %#v", model.focused, model.results)
+	}
+}
+
 func TestReaderAddsVirtualBottomMargin(t *testing.T) {
 	markdown := []byte("## Final check\n\n```bash\nop check\n```\n")
 	var output bytes.Buffer
